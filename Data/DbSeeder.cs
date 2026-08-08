@@ -15,14 +15,28 @@ public static class DbSeeder
                 Role = "Admin"
             };
 
-            var customerUser = new User
+            var carlosUser = new User
             {
-                Username = "cliente",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("cliente123"),
+                Username = "carlos",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("carlos123"),
                 Role = "Customer"
             };
 
-            await dbContext.Users.AddRangeAsync(adminUser, customerUser);
+            var mariaUser = new User
+            {
+                Username = "maria",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("maria123"),
+                Role = "Customer"
+            };
+
+            var luisUser = new User
+            {
+                Username = "luis",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("luis123"),
+                Role = "Customer"
+            };
+
+            await dbContext.Users.AddRangeAsync(adminUser, carlosUser, mariaUser, luisUser);
             await dbContext.SaveChangesAsync(); // save to get IDs
 
             if (!dbContext.Orders.Any())
@@ -30,7 +44,7 @@ public static class DbSeeder
                 var order1 = new Order
                 {
                     Id = Guid.NewGuid(),
-                    UserId = customerUser.Id,
+                    UserId = carlosUser.Id,
                     CustomerName = "Carlos Felipe",
                     Status = OrderStatus.Created,
                     Items = new List<OrderItem>
@@ -43,7 +57,7 @@ public static class DbSeeder
                 var order2 = new Order
                 {
                     Id = Guid.NewGuid(),
-                    UserId = customerUser.Id,
+                    UserId = mariaUser.Id,
                     CustomerName = "Maria Isabelle",
                     Status = OrderStatus.Paid,
                     Items = new List<OrderItem>
@@ -56,7 +70,7 @@ public static class DbSeeder
                 var order3 = new Order
                 {
                     Id = Guid.NewGuid(),
-                    UserId = customerUser.Id,
+                    UserId = luisUser.Id,
                     CustomerName = "Luís Felipe",
                     Status = OrderStatus.Shipped,
                     Items = new List<OrderItem>

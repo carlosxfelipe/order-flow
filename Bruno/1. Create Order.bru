@@ -8,6 +8,9 @@ post {
   url: http://localhost:5189/api/orders
   body: json
   auth: bearer
+}
+
+auth:bearer {
   token: {{jwt_token}}
 }
 
