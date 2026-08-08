@@ -1,8 +1,16 @@
 {
   "version": 2,
-  "dgSpecHash": "xjExdpD0RpA=",
+  "dgSpecHash": "6OMivMuY9aY=",
   "success": true,
   "projectFilePath": "/Users/carlos/Desenvolvimento/csharp/OrderFlow/OrderFlow.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "/Users/carlos/.nuget/packages/fastendpoints/8.2.0/fastendpoints.8.2.0.nupkg.sha512",
+    "/Users/carlos/.nuget/packages/fastendpoints.attributes/8.2.0/fastendpoints.attributes.8.2.0.nupkg.sha512",
+    "/Users/carlos/.nuget/packages/fastendpoints.core/8.2.0/fastendpoints.core.8.2.0.nupkg.sha512",
+    "/Users/carlos/.nuget/packages/fastendpoints.jobqueues/8.2.0/fastendpoints.jobqueues.8.2.0.nupkg.sha512",
+    "/Users/carlos/.nuget/packages/fastendpoints.messaging/8.2.0/fastendpoints.messaging.8.2.0.nupkg.sha512",
+    "/Users/carlos/.nuget/packages/fastendpoints.messaging.core/8.2.0/fastendpoints.messaging.core.8.2.0.nupkg.sha512",
+    "/Users/carlos/.nuget/packages/fluentvalidation/12.1.1/fluentvalidation.12.1.1.nupkg.sha512"
+  ],
   "logs": []
 }
