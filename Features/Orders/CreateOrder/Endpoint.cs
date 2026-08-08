@@ -6,6 +6,8 @@ namespace OrderFlow.Features.Orders.CreateOrder;
 
 public class CreateOrderEndpoint : Endpoint<Request, Response>
 {
+    public AppDbContext Db { get; set; } = null!;
+
     public override void Configure()
     {
         Post("/api/orders");
@@ -21,7 +23,8 @@ public class CreateOrderEndpoint : Endpoint<Request, Response>
             Status = OrderStatus.Created
         };
 
-        Database.Orders.Add(order.Id, order);
+        await Db.Orders.AddAsync(order, ct);
+        await Db.SaveChangesAsync(ct);
 
         await Send.OkAsync(new Response
         {

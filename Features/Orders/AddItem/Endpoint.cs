@@ -1,4 +1,5 @@
 using FastEndpoints;
+using Microsoft.EntityFrameworkCore;
 using OrderFlow.Data;
 using OrderFlow.Domain;
 
@@ -6,6 +7,8 @@ namespace OrderFlow.Features.Orders.AddItem;
 
 public class AddItemEndpoint : Endpoint<Request, Response>
 {
+    public AppDbContext Db { get; set; } = null!;
+
     public override void Configure()
     {
         Post("/api/orders/{orderId}/items");
@@ -14,7 +17,8 @@ public class AddItemEndpoint : Endpoint<Request, Response>
 
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
-        if (!Database.Orders.TryGetValue(req.OrderId, out var order))
+        var order = await Db.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == req.OrderId, ct);
+        if (order == null)
         {
             await Send.NotFoundAsync(cancellation: ct);
             return;
@@ -27,7 +31,6 @@ public class AddItemEndpoint : Endpoint<Request, Response>
             return;
         }
 
-        // Using Coca-Cola as requested in examples/defaults
         var item = new OrderItem
         {
             ProductName = string.IsNullOrWhiteSpace(req.ProductName) ? "Coca-Cola Lata 350ml" : req.ProductName,
@@ -36,6 +39,7 @@ public class AddItemEndpoint : Endpoint<Request, Response>
         };
 
         order.Items.Add(item);
+        await Db.SaveChangesAsync(ct);
 
         await Send.OkAsync(new Response
         {

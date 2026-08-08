@@ -1,10 +1,13 @@
 using FastEndpoints;
+using Microsoft.EntityFrameworkCore;
 using OrderFlow.Data;
 
 namespace OrderFlow.Features.Orders.GetOrder;
 
 public class GetOrderEndpoint : Endpoint<Request, Response>
 {
+    public AppDbContext Db { get; set; } = null!;
+
     public override void Configure()
     {
         Get("/api/orders/{id}");
@@ -13,7 +16,11 @@ public class GetOrderEndpoint : Endpoint<Request, Response>
 
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
-        if (Database.Orders.TryGetValue(req.Id, out var order))
+        var order = await Db.Orders
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.Id == req.Id, ct);
+
+        if (order != null)
         {
             await Send.OkAsync(new Response
             {

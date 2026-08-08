@@ -79,3 +79,10 @@ node_modules/
 ## Env files (Secrets)
 .env
 .env.*
+
+# =========================
+# Databases (SQLite)
+# =========================
+*.db
+*.db-shm
+*.db-wal

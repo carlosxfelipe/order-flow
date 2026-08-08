@@ -1,4 +1,5 @@
 using FastEndpoints;
+using Microsoft.EntityFrameworkCore;
 using OrderFlow.Data;
 using OrderFlow.Domain;
 
@@ -6,6 +7,8 @@ namespace OrderFlow.Features.Orders.PayOrder;
 
 public class PayOrderEndpoint : Endpoint<Request, Response>
 {
+    public AppDbContext Db { get; set; } = null!;
+
     public override void Configure()
     {
         Post("/api/orders/{orderId}/pay");
@@ -14,7 +17,8 @@ public class PayOrderEndpoint : Endpoint<Request, Response>
 
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
-        if (!Database.Orders.TryGetValue(req.OrderId, out var order))
+        var order = await Db.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == req.OrderId, ct);
+        if (order == null)
         {
             await Send.NotFoundAsync(cancellation: ct);
             return;
@@ -35,6 +39,7 @@ public class PayOrderEndpoint : Endpoint<Request, Response>
         }
 
         order.Status = OrderStatus.Paid;
+        await Db.SaveChangesAsync(ct);
 
         await Send.OkAsync(new Response
         {
