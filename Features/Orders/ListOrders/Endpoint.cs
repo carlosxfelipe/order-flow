@@ -11,7 +11,7 @@ public class ListOrdersEndpoint : EndpointWithoutRequest<Response>
     public override void Configure()
     {
         Get("/api/orders");
-        AllowAnonymous();
+
     }
 
     public override async Task HandleAsync(CancellationToken ct)

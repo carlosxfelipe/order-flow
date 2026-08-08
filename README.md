@@ -43,6 +43,16 @@ If you are coming from Postman, Bruno offers a few key advantages for developer 
 * **No Account Required:** You don't need to sign up for an account, log in, or rely on a cloud service just to test your local APIs.
 * **Privacy & Security:** Your API endpoints, payloads, and environment variables never leave your machine.
 
+## Authentication
+
+This project uses JWT (JSON Web Tokens) for security. 
+When the database is initialized, a default admin user is seeded so you can test the secured endpoints.
+
+**Default Credentials:**
+- **Username:** `admin`
+- **Password:** `admin123`
+
+You can use these credentials in the `/api/auth/login` endpoint (via Bruno or Scalar UI) to obtain the Bearer Token.
 
 ## Available Routes
 

@@ -1,16 +1,26 @@
 using FastEndpoints;
 using FastEndpoints.Swagger;
+using FastEndpoints.Security;
 using Microsoft.EntityFrameworkCore;
 using OrderFlow.Data;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddAuthenticationJwtBearer(s => s.SigningKey = "EstaEumaChaveSuperSecretaParaOOrderFlow123!@#");
+builder.Services.AddAuthorization();
+
 builder.Services.AddFastEndpoints();
-builder.Services.SwaggerDocument(); // Geração do documento OpenAPI
+builder.Services.SwaggerDocument(o =>
+{
+    o.EnableJWTBearerAuth = true;
+}); // Geração do documento OpenAPI
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseFastEndpoints();
 
 using (var scope = app.Services.CreateScope())

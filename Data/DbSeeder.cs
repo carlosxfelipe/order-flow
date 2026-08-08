@@ -48,6 +48,18 @@ public static class DbSeeder
         };
 
         await dbContext.Orders.AddRangeAsync(order1, order2, order3);
+
+        if (!dbContext.Users.Any())
+        {
+            var adminUser = new User
+            {
+                Username = "admin",
+                // admin123
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123")
+            };
+            await dbContext.Users.AddAsync(adminUser);
+        }
+
         await dbContext.SaveChangesAsync();
     }
 }

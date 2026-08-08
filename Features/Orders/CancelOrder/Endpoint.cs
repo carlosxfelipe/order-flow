@@ -12,7 +12,7 @@ public class CancelOrderEndpoint : Endpoint<Request, Response>
     public override void Configure()
     {
         Post("/api/orders/{orderId}/cancel");
-        AllowAnonymous();
+
     }
 
     public override async Task HandleAsync(Request req, CancellationToken ct)

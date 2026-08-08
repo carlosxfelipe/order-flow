@@ -7,5 +7,6 @@ meta {
 delete {
   url: http://localhost:5189/api/orders/{{orderId}}/items/{{itemId}}
   body: none
-  auth: none
+  auth: bearer
+  token: {{jwt_token}}
 }

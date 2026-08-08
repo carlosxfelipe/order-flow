@@ -12,7 +12,7 @@ public class RemoveItemEndpoint : Endpoint<Request, Response>
     public override void Configure()
     {
         Delete("/api/orders/{orderId}/items/{itemId}");
-        AllowAnonymous();
+
     }
 
     public override async Task HandleAsync(Request req, CancellationToken ct)

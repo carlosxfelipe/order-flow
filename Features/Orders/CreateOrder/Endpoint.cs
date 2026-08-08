@@ -11,7 +11,7 @@ public class CreateOrderEndpoint : Endpoint<Request, Response>
     public override void Configure()
     {
         Post("/api/orders");
-        AllowAnonymous();
+
     }
 
     public override async Task HandleAsync(Request req, CancellationToken ct)
