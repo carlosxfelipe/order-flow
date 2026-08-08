@@ -1,19 +1,19 @@
 meta {
-  name: 9. Login
+  name: 10. Login (Cliente)
   type: http
-  seq: 9
+  seq: 10
 }
 
 post {
-  url: http://localhost:5000/api/auth/login
+  url: http://localhost:5189/api/auth/login
   body: json
   auth: none
 }
 
 body:json {
   {
-    "username": "admin",
-    "password": "admin123"
+    "username": "cliente",
+    "password": "cliente123"
   }
 }
 

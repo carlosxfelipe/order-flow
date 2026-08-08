@@ -16,7 +16,15 @@ public class ListOrdersEndpoint : EndpointWithoutRequest<Response>
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        var dbOrders = await Db.Orders.Include(o => o.Items).ToListAsync(ct);
+        var query = Db.Orders.Include(o => o.Items).AsQueryable();
+
+        if (!User.IsInRole("Admin"))
+        {
+            var userId = Convert.ToInt32(User.Claims.FirstOrDefault(c => c.Type == "UserId")?.Value ?? "0");
+            query = query.Where(o => o.UserId == userId);
+        }
+
+        var dbOrders = await query.ToListAsync(ct);
 
         var orders = dbOrders.Select(o => new OrderSummary
         {

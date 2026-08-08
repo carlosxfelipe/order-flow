@@ -35,6 +35,7 @@ public class LoginEndpoint(AppDbContext dbContext) : Endpoint<LoginRequest, Logi
                 o.ExpireAt = DateTime.UtcNow.AddDays(1);
                 o.User.Claims.Add(("Username", user.Username));
                 o.User.Claims.Add(("UserId", user.Id.ToString()));
+                o.User.Roles.Add(user.Role);
             });
 
         await Send.OkAsync(new LoginResponse

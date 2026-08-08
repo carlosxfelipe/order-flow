@@ -19,6 +19,7 @@ public class CreateOrderEndpoint : Endpoint<Request, Response>
         var order = new OrderFlow.Domain.Order
         {
             Id = Guid.NewGuid(),
+            UserId = Convert.ToInt32(User.Claims.FirstOrDefault(c => c.Type == "UserId")?.Value ?? "0"),
             CustomerName = req.CustomerName,
             Status = OrderStatus.Created
         };

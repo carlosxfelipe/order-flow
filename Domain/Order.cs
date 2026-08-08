@@ -11,6 +11,8 @@ public enum OrderStatus
 public class Order
 {
     public Guid Id { get; set; }
+    public int UserId { get; set; }
+    public User User { get; set; } = null!;
     public string CustomerName { get; set; } = string.Empty;
     public OrderStatus Status { get; set; } = OrderStatus.Created;
     public List<OrderItem> Items { get; set; } = new();
