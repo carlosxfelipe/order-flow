@@ -31,6 +31,19 @@ http://localhost:5189/scalar
 
 Through this interface, you can view request schemas, response models, and test all the routes directly from your browser.
 
+## Testing with Bruno
+
+You can also use [Bruno](https://www.usebruno.com/) to test the API routes locally. This project includes a `Bruno` collection folder at the root directory.
+
+### Why Bruno instead of Postman?
+
+If you are coming from Postman, Bruno offers a few key advantages for developer workflows:
+* **Local First:** Bruno stores collections directly in your file system as plain text files (`.bru`), rather than forcing cloud synchronization.
+* **Version Control Friendly:** Because collections are plain text files within your project folder, they can be easily committed to Git and versioned along with your source code.
+* **No Account Required:** You don't need to sign up for an account, log in, or rely on a cloud service just to test your local APIs.
+* **Privacy & Security:** Your API endpoints, payloads, and environment variables never leave your machine.
+
+
 ## Available Routes
 
 ### Orders
