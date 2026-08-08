@@ -1,0 +1,11 @@
+meta {
+  name: Pay Order
+  type: http
+  seq: 6
+}
+
+post {
+  url: http://localhost:5189/api/orders/{{orderId}}/pay
+  body: none
+  auth: none
+}

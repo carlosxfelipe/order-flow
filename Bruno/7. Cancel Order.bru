@@ -1,0 +1,11 @@
+meta {
+  name: Cancel Order
+  type: http
+  seq: 7
+}
+
+post {
+  url: http://localhost:5189/api/orders/{{orderId}}/cancel
+  body: none
+  auth: none
+}

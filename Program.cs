@@ -17,6 +17,12 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await dbContext.Database.MigrateAsync();
+
+    // Rodamos o Seed apenas em ambiente de Desenvolvimento
+    if (app.Environment.IsDevelopment())
+    {
+        await DbSeeder.SeedAsync(dbContext);
+    }
 }
 
 // Disponibiliza o JSON do OpenAPI gerado pelo FastEndpoints
