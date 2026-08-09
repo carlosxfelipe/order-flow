@@ -39,6 +39,7 @@ public class AddItemEndpoint : Endpoint<Request, Response>
         };
 
         order.Items.Add(item);
+        Db.OrderItems.Add(item); // EXPLICITLY mark as Added
         await Db.SaveChangesAsync(ct);
 
         await Send.OkAsync(new Response

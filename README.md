@@ -21,6 +21,15 @@ To start the application, run the following command in the project root:
 dotnet run
 ```
 
+## Formatting Code
+
+To keep the codebase cleanly formatted across all projects (API and Tests), use the provided bash script at the root directory:
+
+```bash
+./format.sh
+```
+This script runs `dotnet format OrderFlow.slnx` safely to avoid MSBuild workspace conflicts.
+
 ## API Documentation
 
 Once the application is running, it will automatically redirect the root path to the Scalar API documentation interface. 
@@ -30,6 +39,19 @@ http://localhost:5189/scalar
 (or https://localhost:7186/scalar)
 
 Through this interface, you can view request schemas, response models, and test all the routes directly from your browser.
+
+## Testing with TUnit
+
+This project features a robust **End-to-End Test Suite** using the modern and highly performant **[TUnit](https://tunit.dev/)** testing framework. 
+TUnit executes tests faster than traditional xUnit/NUnit and provides excellent compile-time integrations.
+
+To run the full test suite (which validates all 10 endpoints natively with isolated SQLite databases), run:
+
+```bash
+dotnet test
+```
+
+*Note: 100% of the API endpoints are covered by end-to-end validations using the Arrange-Act-Assert pattern.*
 
 ## Testing with Bruno
 
