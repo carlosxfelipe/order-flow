@@ -21,6 +21,11 @@ To start the application, run the following command in the project root:
 dotnet run
 ```
 
+## Deployment
+
+This project includes a `Dockerfile` pre-configured for deployment on platforms like Render.
+For detailed instructions on configuring the environment variables and migrating to a persistent PostgreSQL database, please see the [Render Deployment Guide](RENDER.md).
+
 ## Formatting Code
 
 To keep the codebase cleanly formatted across all projects (API and Tests), use the provided bash script at the root directory:
