@@ -45,6 +45,6 @@ app.MapScalarApiReference(options =>
 });
 
 // Redireciona a raiz "/" para a documentação no Scalar
-app.MapGet("/", () => Results.Redirect("/scalar")).ExcludeFromDescription();
+app.MapGet("/", () => Results.Redirect("/scalar/v1")).ExcludeFromDescription();
 
 app.Run();
