@@ -23,7 +23,7 @@ public class GetOrderTests : IAsyncDisposable
         // Arrange
         var client = fixture.CreateClient();
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", fixture.GetToken());
-        
+
         using var scope = fixture.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var orderId = db.Orders.First().Id;

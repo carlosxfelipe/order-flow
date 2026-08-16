@@ -28,7 +28,16 @@ If you want Render to execute the `DbSeeder` and populate your database with ini
 - **Key:** `ASPNETCORE_ENVIRONMENT`
 - **Value:** `Development`
 
-## 2. Future Migration to PostgreSQL (Neon DB)
+## 2. Security (JWT Secret)
+
+The application uses JSON Web Tokens (JWT) for authentication. By design, there are no hardcoded secrets in the codebase. If you deploy to Render without configuring a secret, the application will **crash on startup**.
+
+You must add a strong, unique secret as an Environment Variable in Render:
+
+- **Key:** `JwtSecret`
+- **Value:** *(A long, secure, and random string of your choosing)*
+
+## 3. Future Migration to PostgreSQL (Neon DB)
 
 The application is currently configured to use an ephemeral SQLite database, which will be wiped every time the Render instance restarts or sleeps. 
 

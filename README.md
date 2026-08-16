@@ -13,6 +13,14 @@ cd order-flow
 
 ## Setup and Run
 
+This project is secured by design and uses .NET's built-in **User Secrets** to manage sensitive configuration during development without committing them to source control. The application will crash on startup if the `JwtSecret` is not configured.
+
+To run the project locally, open your terminal and set a local JWT secret for your machine:
+
+```bash
+dotnet user-secrets set "JwtSecret" "YourLocalSecretKey123!@#"
+```
+
 The project uses a local SQLite database. The Entity Framework Core migrations are configured to run automatically upon application startup, creating the database file (`orderflow.db`) if it does not exist.
 
 To start the application, run the following command in the project root:

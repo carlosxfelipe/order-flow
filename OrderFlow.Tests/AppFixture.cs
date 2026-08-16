@@ -15,8 +15,8 @@ public class AppFixture : WebApplicationFactory<Program>, IAsyncDisposable
     public AppFixture()
     {
         // Force test host creation and db init during construction
-        _ = Server; 
-        
+        _ = Server;
+
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Database.EnsureDeleted();

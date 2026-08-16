@@ -23,7 +23,7 @@ public class CancelOrderTests : IAsyncDisposable
         // Arrange
         var client = fixture.CreateClient();
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", fixture.GetToken(userId: "2"));
-        
+
         using var scope = fixture.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var orderId = db.Orders.First(o => o.UserId == 2).Id;

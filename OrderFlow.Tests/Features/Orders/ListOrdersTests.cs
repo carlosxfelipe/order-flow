@@ -21,7 +21,7 @@ public class ListOrdersTests : IAsyncDisposable
         // Arrange
         var client = fixture.CreateClient();
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", fixture.GetToken(userId: "2"));
-        
+
         // Act
         var (response, result) = await client.GETAsync<ListOrdersEndpoint, Response>();
 

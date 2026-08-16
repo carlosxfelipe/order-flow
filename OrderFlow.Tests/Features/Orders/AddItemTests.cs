@@ -24,13 +24,13 @@ public class AddItemTests : IAsyncDisposable
         // Arrange
         var client = fixture.CreateClient();
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", fixture.GetToken(userId: "2"));
-        
+
         using var scope = fixture.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var orderId = db.Orders.First(o => o.UserId == 2 && o.Status == OrderFlow.Domain.OrderStatus.Created).Id;
 
-        var request = new Request 
-        { 
+        var request = new Request
+        {
             OrderId = orderId,
             ProductName = "New Product",
             Quantity = 1,

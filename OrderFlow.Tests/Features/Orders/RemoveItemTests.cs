@@ -24,16 +24,16 @@ public class RemoveItemTests : IAsyncDisposable
         // Arrange
         var client = fixture.CreateClient();
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", fixture.GetToken(userId: "2"));
-        
+
         using var scope = fixture.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        
+
         // Find an order item that belongs to user 2's created order
         var order = db.Orders.Include(o => o.Items).First(o => o.UserId == 2 && o.Status == OrderFlow.Domain.OrderStatus.Created && o.Items.Any());
         var itemId = order.Items.First().Id;
 
-        var request = new Request 
-        { 
+        var request = new Request
+        {
             OrderId = order.Id,
             ItemId = itemId
         };
