@@ -22,6 +22,8 @@ func setupTestApp() (*gota.App, *data.Store) {
 		Version: "1.0.0",
 	})
 	app.Use(gota.RequestID())
+	app.Use(gota.SecureHeaders())
+	app.Use(gota.Gzip())
 
 	store := data.NewStore()
 
@@ -385,13 +387,31 @@ func TestDocsProtectedWithBasicAuth(t *testing.T) {
 func TestOrderRichValidationAndObservability(t *testing.T) {
 	app, _ := setupTestApp()
 
-	// 1. Check Request-ID header on responses
+	// 1. Check Request-ID and Security Headers on responses
 	res := doRequest(app, http.MethodPost, "/api/auth/login", "", map[string]string{
 		"username": "carlos",
 		"password": "carlos123",
 	})
 	if res.Header().Get("X-Request-ID") == "" {
 		t.Fatal("expected X-Request-ID header in response")
+	}
+	if res.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Errorf("expected X-Content-Type-Options nosniff, got %q", res.Header().Get("X-Content-Type-Options"))
+	}
+	if res.Header().Get("X-Frame-Options") != "DENY" {
+		t.Errorf("expected X-Frame-Options DENY, got %q", res.Header().Get("X-Frame-Options"))
+	}
+	if res.Header().Get("Referrer-Policy") != "no-referrer" {
+		t.Errorf("expected Referrer-Policy no-referrer, got %q", res.Header().Get("Referrer-Policy"))
+	}
+
+	// Gzip compression for clients accepting gzip
+	reqGzip := httptest.NewRequest(http.MethodGet, "/openapi.json", nil)
+	reqGzip.Header.Set("Accept-Encoding", "gzip")
+	recGzip := httptest.NewRecorder()
+	app.ServeHTTP(recGzip, reqGzip)
+	if recGzip.Header().Get("Content-Encoding") != "gzip" {
+		t.Errorf("expected Content-Encoding gzip, got %q", recGzip.Header().Get("Content-Encoding"))
 	}
 
 	var loginBody struct {

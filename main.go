@@ -28,6 +28,8 @@ func main() {
 	app.Use(gota.RequestID())
 	app.Use(gota.Logger())
 	app.Use(gota.Recover())
+	app.Use(gota.SecureHeaders())
+	app.Use(gota.Gzip())
 	app.Use(gota.CORS())
 
 	// Protect documentation routes (/docs and /openapi.json) with HTTP Basic Auth
