@@ -30,6 +30,9 @@ func main() {
 	app.Use(gota.Recover())
 	app.Use(gota.CORS())
 
+	// Protect documentation routes (/docs and /openapi.json) with HTTP Basic Auth
+	app.UseDocs(gota.BasicAuth("admin", "admin123"))
+
 	// Data store pre-seeded with order-flow demo data
 	store := data.NewStore()
 

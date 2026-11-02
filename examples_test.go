@@ -345,6 +345,43 @@ func TestDocsAndRedirectRoutes(t *testing.T) {
 	}
 }
 
+func TestDocsProtectedWithBasicAuth(t *testing.T) {
+	app, _ := setupTestApp()
+	app.UseDocs(gota.BasicAuth("admin", "admin123"))
+
+	// 1. Without credentials -> 401 Unauthorized
+	reqDocs := httptest.NewRequest(http.MethodGet, "/docs", nil)
+	recDocs := httptest.NewRecorder()
+	app.ServeHTTP(recDocs, reqDocs)
+	if recDocs.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 Unauthorized for /docs without credentials, got %d", recDocs.Code)
+	}
+
+	reqOpenAPI := httptest.NewRequest(http.MethodGet, "/openapi.json", nil)
+	recOpenAPI := httptest.NewRecorder()
+	app.ServeHTTP(recOpenAPI, reqOpenAPI)
+	if recOpenAPI.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 Unauthorized for /openapi.json without credentials, got %d", recOpenAPI.Code)
+	}
+
+	// 2. With valid Basic Auth credentials -> 200 OK
+	reqAuthedDocs := httptest.NewRequest(http.MethodGet, "/docs", nil)
+	reqAuthedDocs.SetBasicAuth("admin", "admin123")
+	recAuthedDocs := httptest.NewRecorder()
+	app.ServeHTTP(recAuthedDocs, reqAuthedDocs)
+	if recAuthedDocs.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for /docs with Basic Auth, got %d", recAuthedDocs.Code)
+	}
+
+	reqAuthedOpenAPI := httptest.NewRequest(http.MethodGet, "/openapi.json", nil)
+	reqAuthedOpenAPI.SetBasicAuth("admin", "admin123")
+	recAuthedOpenAPI := httptest.NewRecorder()
+	app.ServeHTTP(recAuthedOpenAPI, reqAuthedOpenAPI)
+	if recAuthedOpenAPI.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for /openapi.json with Basic Auth, got %d", recAuthedOpenAPI.Code)
+	}
+}
+
 func TestOrderRichValidationAndObservability(t *testing.T) {
 	app, _ := setupTestApp()
 

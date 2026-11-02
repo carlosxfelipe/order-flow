@@ -15,6 +15,8 @@ Then visit:
 - **Scalar UI**: [http://localhost:3000/docs](http://localhost:3000/docs) (or open [http://localhost:3000](http://localhost:3000) which redirects to `/docs`)
 - **OpenAPI 3.1 Spec**: [http://localhost:3000/openapi.json](http://localhost:3000/openapi.json)
 
+> 🔒 **Documentation Authentication**: The `/docs` and `/openapi.json` routes are protected with HTTP Basic Auth via `app.UseDocs(gota.BasicAuth("admin", "admin123"))`. Use user: `admin` and password: `admin123`.
+
 ## 🧪 Running Tests
 
 ```bash
