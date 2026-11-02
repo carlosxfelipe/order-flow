@@ -13,10 +13,12 @@ import (
 func main() {
 	// Initializes Gota with built-in OpenAPI 3.1, Scalar UI, and production timeouts
 	app := gota.New(gota.Config{
-		Title:        "Order Flow API",
-		Version:      "1.0.0",
-		Description:  "Order management API with REPR pattern and zero external dependencies.",
-		ScalarTheme:  gota.ThemeFastify,
+		Title:            "Order Flow API",
+		Version:          "1.0.0",
+		Description:      "Order management API with REPR pattern and zero external dependencies.",
+		TypeScriptURL:    "/types.d.ts",
+		TypeScriptSDKURL: "/sdk.ts",
+		ScalarTheme:      gota.ThemeFastify,
 		ScalarLayout: "classic",
 		MaxBodyBytes: 10 << 20, // 10MB request body protection
 		ReadTimeout:  15 * time.Second,
