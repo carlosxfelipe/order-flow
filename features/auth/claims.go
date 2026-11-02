@@ -7,8 +7,8 @@ import (
 	"order-flow-gota/domain"
 )
 
-// Secret is the HMAC signing key used for JWT tokens in this showcase.
-var Secret = []byte("GotaOrderFlowSecretKey2026!@#")
+// Secret is the HMAC signing key used for JWT tokens in this showcase (at least 32 bytes for HS256).
+var Secret = []byte("GotaOrderFlowSecretKey2026!@#_SuperSecret")
 
 // UserClaims represents the authenticated user payload inside the JWT.
 type UserClaims struct {
