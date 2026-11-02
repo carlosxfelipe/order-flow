@@ -2,4 +2,4 @@ module order-flow-gota
 
 go 1.26.1
 
-require github.com/carlosxfelipe/gota v0.0.0-20261102225347-f008ee3422db
+require github.com/carlosxfelipe/gota v0.0.0-20261102231412-54583f6f3897
