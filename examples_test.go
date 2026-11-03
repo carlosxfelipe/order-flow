@@ -349,7 +349,9 @@ func TestDocsAndRedirectRoutes(t *testing.T) {
 
 func TestDocsProtectedWithBasicAuth(t *testing.T) {
 	app, _ := setupTestApp()
-	app.UseDocs(gota.BasicAuth("admin", "admin123"))
+	app.UseDocs(gota.BasicAuth("admin", "admin123", gota.BasicAuthOptions{
+		AllowWeakCredentials: true,
+	}))
 
 	// 1. Without credentials -> 401 Unauthorized
 	reqDocs := httptest.NewRequest(http.MethodGet, "/docs", nil)
