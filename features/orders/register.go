@@ -5,7 +5,22 @@ import (
 
 	"github.com/carlosxfelipe/gota"
 	"order-flow-gota/data"
+	"order-flow-gota/domain"
+	"order-flow-gota/features/auth"
 )
+
+// authorizeOrderAccess ensures a Customer can only access or mutate their own orders,
+// while Admins have full access to all orders.
+func authorizeOrderAccess(ctx *gota.Context, order domain.Order) error {
+	user, ok := auth.CurrentUser(ctx)
+	if !ok {
+		return nil
+	}
+	if user.Role == "Admin" || order.UserID == 0 || order.UserID == user.UserID {
+		return nil
+	}
+	return gota.Forbidden("You do not have permission to access this order.")
+}
 
 // RegisterRoutes registers all Order REPR endpoints onto the router target (App or RouteGroup).
 func RegisterRoutes(target gota.RouterTarget, store *data.Store) {

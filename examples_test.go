@@ -18,8 +18,10 @@ import (
 
 func setupTestApp() (*gota.App, *data.Store) {
 	app := gota.New(gota.Config{
-		Title:   "Order Flow API Test",
-		Version: "1.0.0",
+		Title:                 "Order Flow API Test",
+		Version:               "1.0.0",
+		DocsCSPEnforce:        true,
+		DisallowUnknownFields: true,
 	})
 	app.Use(gota.RequestID())
 	app.Use(gota.SecureHeaders())
@@ -39,6 +41,7 @@ func setupTestApp() (*gota.App, *data.Store) {
 	protectedGroup := app.Group("")
 	protectedGroup.Use(gota.JWT(auth.Secret, gota.JWTOptions{
 		ClaimsFactory: func() any { return &auth.UserClaims{} },
+		RequireExp:    true,
 	}))
 	auth.RegisterProtectedRoutes(protectedGroup, store)
 	orders.RegisterRoutes(protectedGroup, store)
@@ -205,7 +208,6 @@ func TestAuthLifecycle(t *testing.T) {
 	regRes := doRequest(app, http.MethodPost, "/api/auth/register", "", map[string]string{
 		"username": "tester",
 		"password": "secretpassword",
-		"role":     "Customer",
 	})
 	if regRes.Code != http.StatusOK {
 		t.Fatalf("expected register 200, got %d: %s", regRes.Code, regRes.Body.String())
@@ -422,18 +424,14 @@ func TestOrderRichValidationAndObservability(t *testing.T) {
 	json.Unmarshal(res.Body.Bytes(), &loginBody)
 	token := loginBody.Token
 
-	// 2. Registration must ignore any client-supplied role (no privilege escalation)
+	// 2. Registration must reject unknown/unmapped fields like "role" (mass-assignment protection)
 	escalateRes := doRequest(app, http.MethodPost, "/api/auth/register", "", map[string]string{
 		"username": "hacker123",
 		"password": "password123",
 		"role":     "Admin",
 	})
-	var escalateBody struct {
-		Role string `json:"role"`
-	}
-	json.Unmarshal(escalateRes.Body.Bytes(), &escalateBody)
-	if escalateBody.Role != "Customer" {
-		t.Fatalf("expected server-assigned role Customer, got %q: %s", escalateBody.Role, escalateRes.Body.String())
+	if escalateRes.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 Bad Request for unknown field role, got %d: %s", escalateRes.Code, escalateRes.Body.String())
 	}
 
 	// 3. Validate nested struct & len=8 on ZipCode (invalid CEP length)
@@ -632,7 +630,6 @@ func TestVerifyAllRoutesIndividually(t *testing.T) {
 		res := doRequest(app, http.MethodPost, "/api/auth/register", "", map[string]string{
 			"username": "all_routes_tester",
 			"password": "strongpassword123",
-			"role":     "Customer",
 		})
 		if res.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d: %s", res.Code, res.Body.String())
@@ -824,6 +821,80 @@ func TestVerifyAllRoutesIndividually(t *testing.T) {
 			t.Fatalf("expected 200, got %d: %s", res.Code, res.Body.String())
 		}
 	})
+}
+
+func TestSecurityOrderOwnershipAndModelAudit(t *testing.T) {
+	// 1. Audit domain models for accidental sensitive field exposure
+	for _, m := range []any{domain.User{}, domain.Order{}, domain.OrderItem{}, domain.ShippingAddress{}} {
+		if warnings := gota.AuditModel(m); len(warnings) > 0 {
+			t.Fatalf("expected 0 sensitive field warnings on domain model %T, got: %v", m, warnings)
+		}
+	}
+
+	app, _ := setupTestApp()
+
+	// 2. Login Carlos (Customer, UserID=2) and Admin (UserID=1)
+	carlosLogin := doRequest(app, http.MethodPost, "/api/auth/login", "", map[string]string{
+		"username": "carlos",
+		"password": "carlos123",
+	})
+	var carlosBody struct {
+		Token string `json:"token"`
+	}
+	json.Unmarshal(carlosLogin.Body.Bytes(), &carlosBody)
+
+	adminLogin := doRequest(app, http.MethodPost, "/api/auth/login", "", map[string]string{
+		"username": "admin",
+		"password": "admin123",
+	})
+	var adminBody struct {
+		Token string `json:"token"`
+	}
+	json.Unmarshal(adminLogin.Body.Bytes(), &adminBody)
+
+	// Maria's order (UserID=3)
+	mariasOrderID := "b1a2c3d4-0002-4000-8000-000000000002"
+
+	// Carlos cannot read or cancel Maria's order (403 Forbidden)
+	getOtherRes := doRequest(app, http.MethodGet, "/api/orders/"+mariasOrderID, carlosBody.Token, nil)
+	if getOtherRes.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden when Customer accesses another user's order, got %d", getOtherRes.Code)
+	}
+	cancelOtherRes := doRequest(app, http.MethodPost, "/api/orders/"+mariasOrderID+"/cancel", carlosBody.Token, nil)
+	if cancelOtherRes.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden when Customer cancels another user's order, got %d", cancelOtherRes.Code)
+	}
+
+	// Admin can read Maria's order (200 OK)
+	adminGetRes := doRequest(app, http.MethodGet, "/api/orders/"+mariasOrderID, adminBody.Token, nil)
+	if adminGetRes.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK when Admin accesses any order, got %d", adminGetRes.Code)
+	}
+
+	// 3. Multipart filename sanitization strips path traversal
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	fileWriter, _ := writer.CreateFormFile("receipt", "../../etc/comprovante_pix.pdf")
+	fileWriter.Write([]byte("%PDF-1.4 receipt"))
+	writer.Close()
+
+	carlosOrderID := "b1a2c3d4-0001-4000-8000-000000000001"
+	req := httptest.NewRequest(http.MethodPost, "/api/orders/"+carlosOrderID+"/receipt", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Authorization", "Bearer "+carlosBody.Token)
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for sanitized receipt upload, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var uploadRes struct {
+		Filename string `json:"filename"`
+	}
+	json.Unmarshal(rec.Body.Bytes(), &uploadRes)
+	if uploadRes.Filename != "comprovante_pix.pdf" {
+		t.Fatalf("expected sanitized filename comprovante_pix.pdf, got %q", uploadRes.Filename)
+	}
 }
 
 func BenchmarkGetOrders(b *testing.B) {

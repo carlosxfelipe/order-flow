@@ -34,13 +34,21 @@ func (e *UploadReceiptEndpoint) Handle(ctx *gota.Context, req UploadReceiptReque
 	if !ok {
 		return UploadReceiptResponse{}, gota.NotFound("Order not found")
 	}
+	if err := authorizeOrderAccess(ctx, order); err != nil {
+		return UploadReceiptResponse{}, err
+	}
 
-	order.ReceiptFilename = req.Receipt.Filename
+	safeFilename := gota.SanitizeFilename(req.Receipt.Filename)
+	if safeFilename == "" {
+		return UploadReceiptResponse{}, gota.BadRequest("Invalid receipt filename")
+	}
+
+	order.ReceiptFilename = safeFilename
 	e.Store.SaveOrder(order)
 
 	return UploadReceiptResponse{
 		OrderId:  order.ID,
-		Filename: req.Receipt.Filename,
+		Filename: safeFilename,
 		Size:     req.Receipt.Size,
 		Notes:    req.Notes,
 		Message:  "Receipt attached successfully!",

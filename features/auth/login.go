@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/subtle"
+
 	"github.com/carlosxfelipe/gota"
 	"order-flow-gota/data"
 )
@@ -24,7 +26,7 @@ type LoginEndpoint struct {
 // Handle processes the login request and returns a signed JWT token.
 func (e *LoginEndpoint) Handle(ctx *gota.Context, req LoginRequest) (LoginResponse, error) {
 	user, ok := e.Store.GetUserByUsername(req.Username)
-	if !ok || user.Password != req.Password {
+	if !ok || subtle.ConstantTimeCompare([]byte(user.Password), []byte(req.Password)) != 1 {
 		return LoginResponse{}, gota.BadRequest("Invalid username or password.")
 	}
 

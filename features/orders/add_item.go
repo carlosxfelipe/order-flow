@@ -31,6 +31,9 @@ func (e *AddItemEndpoint) Handle(ctx *gota.Context, req AddItemRequest) (AddItem
 	if !ok {
 		return AddItemResponse{}, gota.NotFound("Order not found")
 	}
+	if err := authorizeOrderAccess(ctx, order); err != nil {
+		return AddItemResponse{}, err
+	}
 
 	if order.Status != domain.StatusCreated {
 		return AddItemResponse{}, gota.BadRequest("Cannot add items. Order is not in initial state.")

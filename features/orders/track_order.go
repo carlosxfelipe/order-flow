@@ -21,6 +21,9 @@ func (e *TrackOrderEndpoint) Handle(ctx *gota.Context, req TrackOrderRequest) (g
 	if !ok {
 		return gota.SSEStream{}, gota.NotFound("Order not found")
 	}
+	if err := authorizeOrderAccess(ctx, order); err != nil {
+		return gota.SSEStream{}, err
+	}
 
 	events := make(chan gota.SSEvent, 2)
 	events <- gota.SSEvent{

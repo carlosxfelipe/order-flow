@@ -27,6 +27,9 @@ func (e *ShipOrderEndpoint) Handle(ctx *gota.Context, req ShipOrderRequest) (Shi
 	if !ok {
 		return ShipOrderResponse{}, gota.NotFound("Order not found")
 	}
+	if err := authorizeOrderAccess(ctx, order); err != nil {
+		return ShipOrderResponse{}, err
+	}
 
 	if order.Status != domain.StatusPaid {
 		return ShipOrderResponse{}, gota.BadRequest("Only paid orders can be shipped.")

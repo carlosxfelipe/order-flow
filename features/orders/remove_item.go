@@ -28,6 +28,9 @@ func (e *RemoveItemEndpoint) Handle(ctx *gota.Context, req RemoveItemRequest) (R
 	if !ok {
 		return RemoveItemResponse{}, gota.NotFound("Order not found")
 	}
+	if err := authorizeOrderAccess(ctx, order); err != nil {
+		return RemoveItemResponse{}, err
+	}
 
 	if order.Status != domain.StatusCreated {
 		return RemoveItemResponse{}, gota.BadRequest("Cannot remove items. Order is no longer in created state.")

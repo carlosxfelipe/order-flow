@@ -27,6 +27,9 @@ func (e *CancelOrderEndpoint) Handle(ctx *gota.Context, req CancelOrderRequest) 
 	if !ok {
 		return CancelOrderResponse{}, gota.NotFound("Order not found")
 	}
+	if err := authorizeOrderAccess(ctx, order); err != nil {
+		return CancelOrderResponse{}, err
+	}
 
 	if order.Status == domain.StatusShipped {
 		return CancelOrderResponse{}, gota.BadRequest("Shipped orders cannot be cancelled.")

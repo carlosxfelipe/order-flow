@@ -29,6 +29,9 @@ func (e *PayOrderEndpoint) Handle(ctx *gota.Context, req PayOrderRequest) (PayOr
 	if !ok {
 		return PayOrderResponse{}, gota.NotFound("Order not found")
 	}
+	if err := authorizeOrderAccess(ctx, order); err != nil {
+		return PayOrderResponse{}, err
+	}
 
 	if order.Status != domain.StatusCreated {
 		return PayOrderResponse{}, gota.BadRequest("Only orders in initial state can be paid.")

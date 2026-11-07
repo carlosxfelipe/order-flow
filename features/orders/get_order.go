@@ -32,6 +32,9 @@ func (e *GetOrderEndpoint) Handle(ctx *gota.Context, req GetOrderRequest) (GetOr
 	if !ok {
 		return GetOrderResponse{}, gota.NotFound("Order not found")
 	}
+	if err := authorizeOrderAccess(ctx, order); err != nil {
+		return GetOrderResponse{}, err
+	}
 
 	return GetOrderResponse{
 		Id:           order.ID,
