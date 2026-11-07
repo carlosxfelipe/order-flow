@@ -14,8 +14,18 @@ Then visit:
 
 - **Scalar UI**: [http://localhost:3000/docs](http://localhost:3000/docs) (or open [http://localhost:3000](http://localhost:3000) which redirects to `/docs`)
 - **OpenAPI 3.1 Spec**: [http://localhost:3000/openapi.json](http://localhost:3000/openapi.json)
+- **TypeScript Client SDK**: [http://localhost:3000/sdk.ts](http://localhost:3000/sdk.ts)
+- **TypeScript Type Definitions**: [http://localhost:3000/types.d.ts](http://localhost:3000/types.d.ts)
 
-> 🔒 **Documentation Authentication**: The `/docs` and `/openapi.json` routes are protected with HTTP Basic Auth via `app.UseDocs(gota.BasicAuth("admin", "admin123"))`. Use user: `admin` and password: `admin123`.
+> 🔒 **Documentation Authentication**: The `/docs`, `/openapi.json`, `/sdk.ts`, and `/types.d.ts` routes are protected with HTTP Basic Auth via `app.UseDocs(gota.BasicAuth("admin", "admin123"))`. Use user: `admin` and password: `admin123`.
+
+## 📦 Offline TypeScript SDK Codegen
+
+To generate the full TypeScript Client SDK (`./dist/sdk.ts`) and TypeScript definitions (`./dist/types.d.ts`) offline (e.g., for CI/CD pipelines or frontend builds without running the HTTP server):
+
+```bash
+go run ./examples/codegen/main.go
+```
 
 ## 🧪 Running Tests
 
