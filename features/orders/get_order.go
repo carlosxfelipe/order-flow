@@ -9,7 +9,6 @@ import (
 // GetOrderRequest defines the path parameter to retrieve an order.
 type GetOrderRequest struct {
 	OrderId string `param:"orderId" doc:"Unique order ID" example:"b1a2c3d4-0001-4000-8000-000000000001"`
-	ID      string `param:"id" doc:"Unique order ID"`
 }
 
 // GetOrderResponse returns complete order details.
@@ -29,11 +28,7 @@ type GetOrderEndpoint struct {
 
 // Handle retrieves the order by ID.
 func (e *GetOrderEndpoint) Handle(ctx *gota.Context, req GetOrderRequest) (GetOrderResponse, error) {
-	id := req.OrderId
-	if id == "" {
-		id = req.ID
-	}
-	order, ok := e.Store.GetOrder(id)
+	order, ok := e.Store.GetOrder(req.OrderId)
 	if !ok {
 		return GetOrderResponse{}, gota.NotFound("Order not found")
 	}
