@@ -38,7 +38,7 @@ A full-featured, zero-build client application using **Vue 3** and **Tailwind CS
 To generate the full TypeScript Client SDK (`./dist/sdk.ts`) and TypeScript definitions (`./dist/types.d.ts`) offline (e.g., for CI/CD pipelines or frontend builds without running the HTTP server):
 
 ```bash
-go run ./examples/codegen/main.go
+go run ./codegen/main.go
 ```
 
 ## 🧪 Running Tests
