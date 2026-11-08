@@ -11,6 +11,28 @@
  * @typedef {import("../dist/sdk").GotaClient} GotaClient
  */
 
+class GotaHttpError extends Error {
+  /**
+   * @param {number} status
+   * @param {string} statusText
+   * @param {any} data
+   * @param {Headers} [headers]
+   */
+  constructor(status, statusText, data, headers) {
+    const message =
+      data && typeof data === "object" && ("message" in data || "error" in data)
+        ? String(data.message || data.error)
+        : statusText || "HTTP Error " + status;
+    super(message);
+    this.name = "GotaHttpError";
+    this.status = status;
+    this.statusText = statusText;
+    this.data = data;
+    this.headers = headers;
+    Object.setPrototypeOf(this, GotaHttpError.prototype);
+  }
+}
+
 /**
  * Exact runtime implementation of createGotaClient() generated in dist/sdk.ts
  * @param {string} [baseUrl=""]
@@ -30,11 +52,24 @@ function createGotaClient(baseUrl = "", clientOptions = {}) {
         );
         for (const k of keys) {
           const v = options.params[k];
-          path = path.replace(":" + k, encodeURIComponent(String(v)));
-          path = path.replace("*" + k, String(v));
+          if (v !== undefined && v !== null) {
+            path = path.replace(":" + k, encodeURIComponent(String(v)));
+            path = path.replace("*" + k, String(v));
+          }
         }
       }
-      let url = baseUrl + path;
+      if (/[:*][a-zA-Z0-9_]+/.test(path)) {
+        throw new Error(
+          "Missing required path parameter in endpoint URL: " +
+            pathTemplate +
+            " (resolved: " +
+            path +
+            ")",
+        );
+      }
+      const cleanBase = baseUrl ? baseUrl.replace(/\/+$/, "") : "";
+      const cleanPath = path.startsWith("/") ? path : "/" + path;
+      let url = cleanBase + cleanPath;
       if (options.query) {
         const q = new URLSearchParams();
         for (const [k, v] of Object.entries(options.query)) {
@@ -56,12 +91,35 @@ function createGotaClient(baseUrl = "", clientOptions = {}) {
         }
       }
       let body = undefined;
+      let duplex = undefined;
       if (options.body !== undefined) {
         if (
           typeof FormData !== "undefined" &&
           options.body instanceof FormData
         ) {
           body = options.body;
+        } else if (
+          typeof URLSearchParams !== "undefined" &&
+          options.body instanceof URLSearchParams
+        ) {
+          body = options.body;
+        } else if (
+          typeof Blob !== "undefined" &&
+          options.body instanceof Blob
+        ) {
+          body = options.body;
+        } else if (
+          typeof ArrayBuffer !== "undefined" &&
+          (options.body instanceof ArrayBuffer ||
+            ArrayBuffer.isView(options.body))
+        ) {
+          body = options.body;
+        } else if (
+          typeof ReadableStream !== "undefined" &&
+          options.body instanceof ReadableStream
+        ) {
+          body = options.body;
+          duplex = "half";
         } else {
           if (!headers.has("Content-Type")) {
             headers.set("Content-Type", "application/json");
@@ -70,23 +128,31 @@ function createGotaClient(baseUrl = "", clientOptions = {}) {
         }
       }
       const fetchFn = clientOptions.fetch || fetch;
-      const res = await fetchFn(url, {
+      /** @type {any} */
+      const fetchInit = {
         method,
         headers,
         body,
         credentials: options.credentials ?? clientOptions.credentials,
         signal: options.signal,
-      });
+        cache: options.cache ?? clientOptions.cache,
+      };
+      const nextConfig = options.next ?? clientOptions.next;
+      if (nextConfig !== undefined) {
+        fetchInit.next = nextConfig;
+      }
+      if (duplex) {
+        fetchInit.duplex = duplex;
+      }
+      const res = await fetchFn(url, fetchInit);
       if (!res.ok) {
         const err = await res.json().catch(() => ({ message: res.statusText }));
-        throw Object.assign(
-          new Error((err && (err.message || err.error)) || res.statusText),
-          { status: res.status, data: err },
-        );
+        throw new GotaHttpError(res.status, res.statusText, err, res.headers);
       }
-      if (res.status === 204) return /** @type {any} */ (undefined);
+      if (res.status === 204 || res.status === 205)
+        return /** @type {any} */ (undefined);
       const ctype = res.headers.get("content-type") || "";
-      if (ctype.includes("application/json")) {
+      if (ctype.includes("application/json") || ctype.includes("+json")) {
         return res.json();
       }
       if (ctype.includes("text/event-stream") && res.body) {
@@ -95,6 +161,19 @@ function createGotaClient(baseUrl = "", clientOptions = {}) {
             ? res.body.pipeThrough(new TextDecoderStream())
             : res.body
         );
+      }
+      const isBinary =
+        /^(image|audio|video)\/|application\/(octet-stream|pdf|zip|gzip|vnd\.|x-)/.test(
+          ctype,
+        );
+      if (isBinary && typeof res.blob === "function") {
+        return res.blob();
+      }
+      if (ctype.startsWith("text/") || ctype.includes("xml")) {
+        return res.text();
+      }
+      if (typeof res.blob === "function") {
+        return res.blob();
       }
       return /** @type {any} */ (res.text());
     },
@@ -111,6 +190,9 @@ createApp({
     // ----------------------------------------------------
     const baseUrl = ref(
       localStorage.getItem("orderflow_baseUrl") || "http://localhost:3000",
+    );
+    const docsUrl = computed(
+      () => (baseUrl.value ? baseUrl.value.replace(/\/+$/, "") : "") + "/docs",
     );
     const connectionError = ref(false);
     const notification = ref(
@@ -187,6 +269,20 @@ createApp({
         null
       ),
     );
+
+    /**
+     * Normalizes validation error arrays into clean comma-separated strings for UI display
+     * @param {Record<string, string[] | string>} errors
+     * @returns {Record<string, string>}
+     */
+    function formatErrors(errors) {
+      /** @type {Record<string, string>} */
+      const result = {};
+      for (const [key, val] of Object.entries(errors)) {
+        result[key] = Array.isArray(val) ? val.join(", ") : String(val);
+      }
+      return result;
+    }
     const showShippingFields = ref(false);
     const newOrderForm = reactive({
       customerName: "",
@@ -409,7 +505,11 @@ createApp({
           inspectPayload(res, `Order: ${res.id}`);
         }
       } catch (/** @type {any} */ err) {
-        lookupError.value = `${err.status || "Error"}: ${err.message}`;
+        if (err instanceof GotaHttpError) {
+          lookupError.value = `${err.status}: ${err.message}`;
+        } else {
+          lookupError.value = err?.message || String(err);
+        }
       } finally {
         loadingOrderDetail.value = false;
       }
@@ -439,10 +539,21 @@ createApp({
         await loadOrders();
         await fetchOrderById(res.orderId);
       } catch (/** @type {any} */ err) {
-        createOrderError.value = {
-          message: err.message,
-          fields: err.data?.errors || null,
-        };
+        if (err instanceof GotaHttpError) {
+          const data = err.data;
+          createOrderError.value = {
+            message: err.message,
+            fields:
+              data && "errors" in data && data.errors
+                ? formatErrors(data.errors)
+                : null,
+          };
+        } else {
+          createOrderError.value = {
+            message: err?.message || String(err),
+            fields: null,
+          };
+        }
       } finally {
         creatingOrder.value = false;
       }
@@ -723,6 +834,7 @@ createApp({
 
     return {
       baseUrl,
+      docsUrl,
       connectionError,
       notification,
       token,
