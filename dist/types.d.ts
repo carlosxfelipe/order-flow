@@ -77,6 +77,12 @@ export interface DeleteAccountResponse {
   message: string;
 }
 
+export interface ErrorResponse {
+  error: string;
+  status: number;
+  requestId?: string;
+}
+
 export interface GetOrderResponse {
   /**
    * Order ID
@@ -320,6 +326,12 @@ export interface User {
   role: string;
 }
 
+export interface ValidationError {
+  message: string;
+  errors: Record<string, string[]>;
+  status: number;
+}
+
 export interface GotaEndpoints {
   /**
    * Delete user account
@@ -332,6 +344,7 @@ export interface GotaEndpoints {
     query: void;
     body: void;
     response: DeleteAccountResponse;
+    error: ErrorResponse | ValidationError;
   };
   /**
    * Remove item from order
@@ -344,6 +357,7 @@ export interface GotaEndpoints {
     query: void;
     body: void;
     response: RemoveItemResponse;
+    error: ErrorResponse | ValidationError;
   };
   /**
    * Get current user profile
@@ -356,6 +370,7 @@ export interface GotaEndpoints {
     query: void;
     body: void;
     response: User;
+    error: ErrorResponse | ValidationError;
   };
   /**
    * List orders
@@ -368,6 +383,7 @@ export interface GotaEndpoints {
     query: void;
     body: void;
     response: ListOrdersResponse;
+    error: ErrorResponse | ValidationError;
   };
   /**
    * Get order by ID
@@ -380,6 +396,7 @@ export interface GotaEndpoints {
     query: void;
     body: void;
     response: GetOrderResponse;
+    error: ErrorResponse | ValidationError;
   };
   /**
    * Track order status stream
@@ -392,6 +409,7 @@ export interface GotaEndpoints {
     query: void;
     body: void;
     response: ReadableStream<string>;
+    error: ErrorResponse | ValidationError;
   };
   /**
    * Authenticates a user
@@ -404,6 +422,7 @@ export interface GotaEndpoints {
     query: void;
     body: LoginRequest;
     response: LoginResponse;
+    error: ErrorResponse | ValidationError;
   };
   /**
    * Register new account
@@ -416,6 +435,7 @@ export interface GotaEndpoints {
     query: void;
     body: RegisterRequest;
     response: RegisterResponse;
+    error: ErrorResponse | ValidationError;
   };
   /**
    * Create order
@@ -428,6 +448,7 @@ export interface GotaEndpoints {
     query: void;
     body: CreateOrderRequest;
     response: CreateOrderResponse;
+    error: ErrorResponse | ValidationError;
   };
   /**
    * Cancel order
@@ -440,6 +461,7 @@ export interface GotaEndpoints {
     query: void;
     body: void;
     response: CancelOrderResponse;
+    error: ErrorResponse | ValidationError;
   };
   /**
    * Add item to order
@@ -452,6 +474,7 @@ export interface GotaEndpoints {
     query: void;
     body: AddItemRequest;
     response: AddItemResponse;
+    error: ErrorResponse | ValidationError;
   };
   /**
    * Pay order
@@ -464,6 +487,7 @@ export interface GotaEndpoints {
     query: void;
     body: PayOrderRequest;
     response: PayOrderResponse;
+    error: ErrorResponse | ValidationError;
   };
   /**
    * Upload order receipt
@@ -476,6 +500,7 @@ export interface GotaEndpoints {
     query: void;
     body: FormData;
     response: UploadReceiptResponse;
+    error: ErrorResponse | ValidationError;
   };
   /**
    * Ship order
@@ -488,6 +513,7 @@ export interface GotaEndpoints {
     query: void;
     body: void;
     response: ShipOrderResponse;
+    error: ErrorResponse | ValidationError;
   };
 }
 
@@ -497,6 +523,12 @@ export type RequestParams<K extends EndpointKey> = GotaEndpoints[K]["params"];
 export type RequestQuery<K extends EndpointKey> = GotaEndpoints[K]["query"];
 export type RequestBody<K extends EndpointKey> = GotaEndpoints[K]["body"];
 export type ResponseData<K extends EndpointKey> = GotaEndpoints[K]["response"];
+export type ResponseError<K extends EndpointKey> = GotaEndpoints[K]["error"];
+
+export interface NextFetchRequestConfig {
+  revalidate?: number | false;
+  tags?: string[];
+}
 
 export type RequestOptions<K extends EndpointKey> =
   (RequestParams<K> extends void ? { params?: never } : { params: RequestParams<K> }) &
@@ -505,11 +537,15 @@ export type RequestOptions<K extends EndpointKey> =
     headers?: Record<string, string>;
     credentials?: RequestCredentials;
     signal?: AbortSignal;
+    cache?: RequestCache;
+    next?: NextFetchRequestConfig;
   };
 
 export interface GotaClientOptions {
   headers?: Record<string, string> | (() => Record<string, string> | Promise<Record<string, string>>);
   credentials?: RequestCredentials;
+  cache?: RequestCache;
+  next?: NextFetchRequestConfig;
   fetch?: typeof fetch;
 }
 
@@ -521,6 +557,14 @@ export interface GotaClient {
       ? [options?: RequestOptions<K>]
       : [options: RequestOptions<K>]
   ): Promise<ResponseData<K>>;
+}
+
+export declare class GotaHttpError<T = unknown> extends Error {
+  readonly status: number;
+  readonly statusText: string;
+  readonly data: T;
+  readonly headers?: Headers;
+  constructor(status: number, statusText: string, data: T, headers?: Headers);
 }
 
 export declare function createGotaClient(baseUrl?: string, clientOptions?: GotaClientOptions): GotaClient;
