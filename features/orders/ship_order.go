@@ -2,8 +2,8 @@ package orders
 
 import (
 	"github.com/carlosxfelipe/gota"
-	"order-flow-gota/data"
-	"order-flow-gota/domain"
+	"order-flow/data"
+	"order-flow/domain"
 )
 
 // ShipOrderRequest defines the path parameter for shipping.

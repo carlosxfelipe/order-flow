@@ -2,7 +2,7 @@ package auth
 
 import (
 	"github.com/carlosxfelipe/gota"
-	"order-flow-gota/data"
+	"order-flow/data"
 )
 
 // DeleteAccountResponse confirms account deletion.

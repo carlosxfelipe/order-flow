@@ -2,8 +2,8 @@ package auth
 
 import (
 	"github.com/carlosxfelipe/gota"
-	"order-flow-gota/data"
-	"order-flow-gota/domain"
+	"order-flow/data"
+	"order-flow/domain"
 )
 
 // MeEndpoint retrieves the profile of the currently authenticated user.

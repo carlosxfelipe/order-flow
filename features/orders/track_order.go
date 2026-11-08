@@ -2,7 +2,7 @@ package orders
 
 import (
 	"github.com/carlosxfelipe/gota"
-	"order-flow-gota/data"
+	"order-flow/data"
 )
 
 // TrackOrderRequest defines the order ID to track via Server-Sent Events.

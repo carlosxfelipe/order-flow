@@ -4,7 +4,7 @@ import (
 	"crypto/subtle"
 
 	"github.com/carlosxfelipe/gota"
-	"order-flow-gota/data"
+	"order-flow/data"
 )
 
 // LoginRequest defines credentials for authentication.

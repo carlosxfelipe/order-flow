@@ -4,7 +4,7 @@ import (
 	"mime/multipart"
 
 	"github.com/carlosxfelipe/gota"
-	"order-flow-gota/data"
+	"order-flow/data"
 )
 
 // UploadReceiptRequest defines the multipart/form-data payload for attaching a payment receipt.

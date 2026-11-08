@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/carlosxfelipe/gota"
-	"order-flow-gota/domain"
+	"order-flow/domain"
 )
 
 // Secret is the HMAC signing key used for JWT tokens in this showcase (at least 32 bytes for HS256).

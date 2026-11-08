@@ -2,9 +2,9 @@ package orders
 
 import (
 	"github.com/carlosxfelipe/gota"
-	"order-flow-gota/data"
-	"order-flow-gota/domain"
-	"order-flow-gota/features/auth"
+	"order-flow/data"
+	"order-flow/domain"
+	"order-flow/features/auth"
 )
 
 // CreateOrderRequest defines the input payload to create a new order.

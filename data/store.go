@@ -4,7 +4,7 @@ import (
 	"sort"
 	"sync"
 
-	"order-flow-gota/domain"
+	"order-flow/domain"
 )
 
 // Store provides thread-safe in-memory data storage pre-seeded with order-flow demo data.

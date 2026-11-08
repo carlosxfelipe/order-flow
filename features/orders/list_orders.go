@@ -2,8 +2,8 @@ package orders
 
 import (
 	"github.com/carlosxfelipe/gota"
-	"order-flow-gota/data"
-	"order-flow-gota/features/auth"
+	"order-flow/data"
+	"order-flow/features/auth"
 )
 
 // OrderSummary provides a high-level summary of an order in the listing.

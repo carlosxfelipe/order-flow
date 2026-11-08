@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/carlosxfelipe/gota"
-	"order-flow-gota/data"
-	"order-flow-gota/domain"
-	"order-flow-gota/features/auth"
+	"order-flow/data"
+	"order-flow/domain"
+	"order-flow/features/auth"
 )
 
 // authorizeOrderAccess ensures a Customer can only access or mutate their own orders,

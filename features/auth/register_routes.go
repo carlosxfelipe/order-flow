@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/carlosxfelipe/gota"
-	"order-flow-gota/data"
+	"order-flow/data"
 )
 
 // RegisterPublicRoutes registers anonymous authentication endpoints (Login, Register).

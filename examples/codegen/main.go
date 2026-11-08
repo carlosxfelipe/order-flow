@@ -4,9 +4,9 @@ import (
 	"log"
 
 	"github.com/carlosxfelipe/gota"
-	"order-flow-gota/data"
-	"order-flow-gota/features/auth"
-	"order-flow-gota/features/orders"
+	"order-flow/data"
+	"order-flow/features/auth"
+	"order-flow/features/orders"
 )
 
 // Example demonstrating offline TypeScript SDK code generation (e.g. for CI/CD or build scripts)

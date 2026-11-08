@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"github.com/carlosxfelipe/gota"
-	"order-flow-gota/data"
-	"order-flow-gota/domain"
-	"order-flow-gota/features/auth"
-	"order-flow-gota/features/orders"
+	"order-flow/data"
+	"order-flow/domain"
+	"order-flow/features/auth"
+	"order-flow/features/orders"
 )
 
 func setupTestApp() (*gota.App, *data.Store) {
