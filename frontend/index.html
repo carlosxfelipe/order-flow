@@ -1,0 +1,1293 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Order Flow 💧 — Gota REPR Frontend (Zero Build)</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      src="https://unpkg.com/vue@3/dist/vue.global.prod.js"
+      defer
+    ></script>
+    <script src="./app.js" defer></script>
+  </head>
+  <body
+    class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen antialiased selection:bg-indigo-500/20 selection:text-indigo-700 dark:selection:bg-indigo-500/30 dark:selection:text-indigo-200 transition-colors"
+  >
+    <div id="app" v-cloak class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <!-- Top Notification Toast -->
+      <div
+        v-if="notification"
+        :class="[
+          'fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl shadow-lg border text-sm flex items-center gap-3 transition-all transform duration-200',
+          notification.type === 'error'
+            ? 'bg-rose-50 dark:bg-rose-950 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+            : notification.type === 'info'
+            ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-950 border-transparent'
+            : 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+        ]"
+      >
+        <span class="text-base"
+          >{{ notification.type === 'error' ? '⚠️' : notification.type ===
+          'info' ? 'ℹ️' : '✓' }}</span
+        >
+        <span>{{ notification.text }}</span>
+        <button
+          @click="notification = null"
+          class="ml-2 opacity-60 hover:opacity-100 text-xs font-semibold cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- Header -->
+      <header
+        class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800"
+      >
+        <div class="min-w-0">
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <span class="text-2xl">📦💧</span>
+            <h1
+              class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white"
+            >
+              Order Flow REPR Frontend
+            </h1>
+            <span
+              class="text-xs font-mono uppercase px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25"
+            >
+              Zero Build
+            </span>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">
+            Vue 3 + Tailwind CDN consuming Gota REPR endpoints with JWT auth,
+            multipart uploads & SSE streams.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap shrink-0">
+          <div
+            class="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1 shadow-xs"
+          >
+            <span class="text-xs text-slate-400 font-mono">API:</span>
+            <input
+              v-model="baseUrl"
+              @change="updateBaseUrl"
+              type="text"
+              placeholder="http://localhost:3000"
+              class="h-7 bg-transparent text-xs font-mono text-slate-700 dark:text-slate-300 focus:outline-none w-44"
+            />
+          </div>
+          <a
+            :href="baseUrl + '/docs'"
+            target="_blank"
+            rel="noopener"
+            class="h-9 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 text-xs font-medium px-3.5 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-200 shadow-xs transition cursor-pointer"
+          >
+            <span>Scalar Docs</span>
+            <span aria-hidden="true" class="text-slate-400 dark:text-slate-500"
+              >↗</span
+            >
+          </a>
+        </div>
+      </header>
+
+      <!-- Connection Alert Banner -->
+      <div
+        v-if="connectionError"
+        class="mt-6 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-200 text-sm flex items-center justify-between gap-4"
+      >
+        <div>
+          <span class="font-semibold"
+            >Cannot reach Order Flow API at {{ baseUrl }}</span
+          >
+          <p class="text-xs text-rose-600 dark:text-rose-300/80 mt-0.5">
+            Make sure the server is running with
+            <code
+              class="font-mono bg-rose-100 dark:bg-rose-900/50 px-1.5 py-0.5 rounded"
+              >go run main.go</code
+            >
+          </p>
+        </div>
+        <button
+          @click="loadOrders"
+          class="px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-xs font-medium shrink-0 cursor-pointer"
+        >
+          Retry
+        </button>
+      </div>
+
+      <!-- Authentication Bar & Account Switcher -->
+      <section
+        class="mt-6 bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+      >
+        <!-- User Session Indicator -->
+        <div class="flex items-center gap-3">
+          <div
+            v-if="currentUser"
+            class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-sky-400 flex items-center justify-center text-white font-bold text-sm shadow-xs"
+          >
+            {{ currentUser.username.slice(0, 2).toUpperCase() }}
+          </div>
+          <div
+            v-else
+            class="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-500 text-sm"
+          >
+            👤
+          </div>
+
+          <div v-if="currentUser" class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-bold text-sm text-slate-900 dark:text-white">
+                {{ currentUser.username }}
+              </span>
+              <span
+                :class="[
+                  'text-[10px] font-mono uppercase px-2 py-0.5 rounded-full border font-semibold',
+                  currentUser.role === 'Admin'
+                    ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/25'
+                    : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25'
+                ]"
+              >
+                {{ currentUser.role }}
+              </span>
+              <span class="text-xs text-slate-400 font-mono"
+                >ID: #{{ currentUser.id }}</span
+              >
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <span v-if="currentUser.role === 'Admin'">Admin Mode: can view all orders across all users</span>
+              <span v-else>Customer Mode: viewing scoped personal orders</span>
+            </p>
+          </div>
+
+          <div v-else class="min-w-0">
+            <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">
+              Not authenticated
+            </p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+              Pick a pre-seeded account or sign in with custom credentials.
+            </p>
+          </div>
+        </div>
+
+        <!-- Quick Account Switcher & Auth Actions -->
+        <div class="flex items-center gap-2 flex-wrap shrink-0">
+          <span class="text-xs text-slate-400 mr-1 hidden sm:inline"
+            >Quick switch:</span
+          >
+          <div
+            class="inline-flex rounded-lg border border-slate-200 dark:border-slate-800 p-0.5 bg-slate-50 dark:bg-slate-950"
+          >
+            <button
+              v-for="acc in seedAccounts"
+              :key="acc.username"
+              @click="quickLogin(acc.username, acc.pass)"
+              :class="[
+                'px-2.5 py-1 text-xs font-medium rounded-md transition cursor-pointer',
+                currentUser?.username === acc.username
+                  ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              ]"
+            >
+              {{ acc.username }}
+            </button>
+          </div>
+
+          <button
+            @click="showAuthModal = true; authTab = 'login'"
+            class="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-medium border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+          >
+            🔑 Custom Auth
+          </button>
+
+          <button
+            v-if="currentUser"
+            @click="deleteAccount"
+            title="Permanently delete account (DELETE /api/auth/account)"
+            class="px-2.5 py-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-800/40 text-xs transition cursor-pointer"
+          >
+            🗑️ Delete
+          </button>
+
+          <button
+            v-if="currentUser"
+            @click="logout"
+            class="px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/25 text-xs font-medium transition cursor-pointer"
+          >
+            Logout
+          </button>
+        </div>
+      </section>
+
+      <!-- Main App Layout: Left Sidebar & Right Content -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+        <!-- ============================================== -->
+        <!-- LEFT COLUMN: Create Order + Lookup Card -->
+        <!-- ============================================== -->
+        <div class="lg:col-span-4 space-y-6">
+          <!-- Create Order Card (POST /api/orders) -->
+          <section
+            class="bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs"
+          >
+            <div class="flex items-center justify-between mb-4">
+              <h2
+                class="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2"
+              >
+                <span>➕</span> Create Order
+              </h2>
+              <span
+                class="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25"
+              >
+                POST /api/orders
+              </span>
+            </div>
+
+            <form @submit.prevent="createOrder" class="space-y-4">
+              <div>
+                <label
+                  class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5"
+                >
+                  Customer Name *
+                </label>
+                <input
+                  v-model="newOrderForm.customerName"
+                  type="text"
+                  placeholder="e.g. Carlos Felipe"
+                  class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <!-- Collapsible Shipping Address with Rich Validation -->
+              <div
+                class="border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-950/40"
+              >
+                <button
+                  type="button"
+                  @click="showShippingFields = !showShippingFields"
+                  class="w-full flex items-center justify-between text-xs font-medium text-slate-700 dark:text-slate-300 cursor-pointer"
+                >
+                  <span class="flex items-center gap-1.5">
+                    <span>📍</span> Shipping Address (Optional)
+                  </span>
+                  <span class="text-slate-400"
+                    >{{ showShippingFields ? '▲ Hide' : '▼ Expand' }}</span
+                  >
+                </button>
+
+                <div
+                  v-if="showShippingFields"
+                  class="mt-3 space-y-3 pt-3 border-t border-slate-200 dark:border-slate-800"
+                >
+                  <div>
+                    <label
+                      class="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1"
+                    >
+                      Street Address (min 3 chars)
+                    </label>
+                    <input
+                      v-model="newOrderForm.shippingAddress.street"
+                      type="text"
+                      placeholder="Av. Paulista, 1000"
+                      class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label
+                        class="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1"
+                      >
+                        City
+                      </label>
+                      <input
+                        v-model="newOrderForm.shippingAddress.city"
+                        type="text"
+                        placeholder="São Paulo"
+                        class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        class="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1"
+                      >
+                        CEP (8 digits)
+                      </label>
+                      <input
+                        v-model="newOrderForm.shippingAddress.zipCode"
+                        type="text"
+                        placeholder="01310100"
+                        class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Validation / API Error Banner -->
+              <div
+                v-if="createOrderError"
+                class="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/60 text-xs text-rose-800 dark:text-rose-200 space-y-1"
+              >
+                <div class="font-semibold">{{ createOrderError.message }}</div>
+                <ul
+                  v-if="createOrderError.fields"
+                  class="list-disc list-inside text-rose-700 dark:text-rose-300/90"
+                >
+                  <li
+                    v-for="(msg, field) in createOrderError.fields"
+                    :key="field"
+                  >
+                    <span class="font-mono">{{ field }}</span>: {{ msg }}
+                  </li>
+                </ul>
+              </div>
+
+              <button
+                type="submit"
+                :disabled="creatingOrder || !currentUser"
+                class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-sm transition cursor-pointer shadow-xs flex items-center justify-center gap-2"
+              >
+                <span v-if="creatingOrder" class="animate-spin text-sm"
+                  >⌛</span
+                >
+                <span
+                  >{{ creatingOrder ? 'Creating Order...' : '+ Create New Order'
+                  }}</span
+                >
+              </button>
+            </form>
+          </section>
+
+          <!-- Inspect Order by ID (GET /api/orders/:orderId) -->
+          <section
+            class="bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs"
+          >
+            <div class="flex items-center justify-between mb-4">
+              <h2
+                class="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2"
+              >
+                <span>🔍</span> Lookup Order
+              </h2>
+              <span
+                class="text-[11px] font-mono px-2 py-0.5 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/25"
+              >
+                GET /api/orders/:id
+              </span>
+            </div>
+
+            <form
+              @submit.prevent="fetchOrderById(selectedOrderId, true)"
+              class="flex gap-2"
+            >
+              <input
+                v-model="selectedOrderId"
+                type="text"
+                placeholder="Order UUID..."
+                class="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+              />
+              <button
+                type="submit"
+                :disabled="loadingOrderDetail || !selectedOrderId"
+                class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition cursor-pointer shrink-0 disabled:opacity-50"
+              >
+                Fetch
+              </button>
+            </form>
+
+            <div
+              v-if="lookupError"
+              class="mt-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/50 text-xs text-amber-800 dark:text-amber-200"
+            >
+              {{ lookupError }}
+            </div>
+          </section>
+
+          <!-- Raw JSON Response Inspector Card -->
+          <section
+            v-if="inspectorPayload"
+            class="bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <span
+                class="text-xs font-semibold text-slate-600 dark:text-slate-400"
+              >
+                {{ inspectorTitle }}
+              </span>
+              <button
+                @click="inspectorPayload = null"
+                class="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+              >
+                ✕ Close
+              </button>
+            </div>
+            <pre
+              class="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-[11px] font-mono text-indigo-700 dark:text-indigo-300 overflow-x-auto max-h-60 overflow-y-auto"
+            >
+{{ JSON.stringify(inspectorPayload, null, 2) }}</pre
+            >
+          </section>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- RIGHT COLUMN: Orders List & Active Workspace -->
+        <!-- ============================================== -->
+        <div class="lg:col-span-8 space-y-6">
+          <!-- Orders Directory & Filter Tabs (GET /api/orders) -->
+          <section
+            class="bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs"
+          >
+            <div
+              class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4"
+            >
+              <div class="flex items-center gap-2">
+                <h2
+                  class="text-sm font-semibold text-slate-900 dark:text-white"
+                >
+                  Orders
+                </h2>
+                <span
+                  class="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono"
+                >
+                  {{ filteredOrders.length }} / {{ orders.length }}
+                </span>
+                <span
+                  class="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25"
+                >
+                  GET /api/orders
+                </span>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <!-- Status Filter Pills -->
+                <div
+                  class="inline-flex rounded-lg border border-slate-200 dark:border-slate-800 p-0.5 bg-slate-50 dark:bg-slate-950 text-xs"
+                >
+                  <button
+                    v-for="status in ['all', 'Created', 'Paid', 'Shipped', 'Cancelled']"
+                    :key="status"
+                    @click="selectedStatusFilter = status"
+                    :class="[
+                      'px-2 py-1 rounded-md capitalize transition cursor-pointer',
+                      selectedStatusFilter === status
+                        ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ]"
+                  >
+                    {{ status }}
+                  </button>
+                </div>
+
+                <button
+                  @click="loadOrders"
+                  :disabled="loadingOrders"
+                  title="Reload orders"
+                  class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 transition cursor-pointer shrink-0 disabled:opacity-50"
+                >
+                  ↻ Refresh
+                </button>
+              </div>
+            </div>
+
+            <div
+              v-if="loadingOrders"
+              class="py-10 text-center text-xs text-slate-500"
+            >
+              Loading orders from server...
+            </div>
+
+            <div
+              v-else-if="filteredOrders.length === 0"
+              class="py-10 text-center text-xs text-slate-500"
+            >
+              No orders found matching filter.
+            </div>
+
+            <!-- Orders Grid Cards -->
+            <div
+              v-else
+              class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-72 overflow-y-auto pr-1"
+            >
+              <div
+                v-for="item in filteredOrders"
+                :key="item.id"
+                @click="fetchOrderById(item.id)"
+                :class="[
+                  'p-3.5 rounded-xl border transition cursor-pointer text-left relative flex flex-col justify-between',
+                  selectedOrder?.id === item.id
+                    ? 'border-indigo-500 bg-indigo-500/5 dark:bg-indigo-500/10 shadow-xs ring-1 ring-indigo-500/30'
+                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-950/40'
+                ]"
+              >
+                <div>
+                  <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <span
+                      class="text-xs font-bold text-slate-900 dark:text-white truncate"
+                    >
+                      {{ item.customerName }}
+                    </span>
+                    <span
+                      :class="[
+                        'text-[10px] font-mono uppercase px-2 py-0.5 rounded-full border shrink-0',
+                        statusBadgeClass(item.status)
+                      ]"
+                    >
+                      {{ item.status }}
+                    </span>
+                  </div>
+                  <p class="text-[11px] font-mono text-slate-500 truncate">
+                    {{ item.id }}
+                  </p>
+                </div>
+
+                <div
+                  class="flex items-center justify-between mt-3 pt-2 border-t border-slate-200/60 dark:border-slate-800/60"
+                >
+                  <span
+                    class="text-xs font-semibold text-slate-900 dark:text-slate-100"
+                  >
+                    {{ formatCurrency(item.totalAmount) }}
+                  </span>
+                  <span
+                    class="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium"
+                  >
+                    {{ selectedOrder?.id === item.id ? '● Active' : 'Manage →'
+                    }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============================================== -->
+          <!-- SELECTED ORDER MANAGEMENT WORKSPACE -->
+          <!-- ============================================== -->
+          <section
+            v-if="selectedOrder"
+            class="bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-6"
+          >
+            <!-- Order Header with Pipeline Stepper -->
+            <div>
+              <div
+                class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800"
+              >
+                <div>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-mono text-slate-500">Order:</span>
+                    <span
+                      class="text-sm font-mono font-bold text-slate-900 dark:text-white"
+                    >
+                      {{ selectedOrder.id }}
+                    </span>
+                    <span
+                      :class="[
+                        'text-xs font-mono uppercase px-2.5 py-0.5 rounded-full border font-semibold',
+                        statusBadgeClass(selectedOrder.status)
+                      ]"
+                    >
+                      {{ selectedOrder.status }}
+                    </span>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">
+                    Customer:
+                    <span class="font-medium text-slate-800 dark:text-slate-200"
+                      >{{ selectedOrder.customerName }}</span
+                    >
+                  </p>
+                </div>
+
+                <div
+                  class="text-right sm:shrink-0 flex items-center sm:flex-col sm:items-end justify-between"
+                >
+                  <span class="text-xs text-slate-500">Total Order Amount</span>
+                  <span
+                    class="text-xl font-bold text-indigo-600 dark:text-indigo-400"
+                  >
+                    {{ formatCurrency(selectedOrder.totalAmount) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Visual Status Pipeline -->
+              <div class="mt-4 flex items-center justify-between text-xs">
+                <div class="flex items-center gap-2">
+                  <span
+                    :class="[
+                      'w-3 h-3 rounded-full flex items-center justify-center text-[8px] text-white font-bold',
+                      ['Created', 'Paid', 'Shipped'].includes(selectedOrder.status) ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700'
+                    ]"
+                    >✓</span
+                  >
+                  <span
+                    :class="selectedOrder.status === 'Created' ? 'font-bold text-amber-600 dark:text-amber-400' : 'text-slate-500'"
+                  >
+                    1. Created
+                  </span>
+                </div>
+                <div
+                  class="h-0.5 flex-1 mx-3 bg-slate-200 dark:bg-slate-800"
+                ></div>
+
+                <div class="flex items-center gap-2">
+                  <span
+                    :class="[
+                      'w-3 h-3 rounded-full flex items-center justify-center text-[8px] text-white font-bold',
+                      ['Paid', 'Shipped'].includes(selectedOrder.status) ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
+                    ]"
+                    >✓</span
+                  >
+                  <span
+                    :class="selectedOrder.status === 'Paid' ? 'font-bold text-emerald-600 dark:text-emerald-400' : 'text-slate-500'"
+                  >
+                    2. Paid
+                  </span>
+                </div>
+                <div
+                  class="h-0.5 flex-1 mx-3 bg-slate-200 dark:bg-slate-800"
+                ></div>
+
+                <div class="flex items-center gap-2">
+                  <span
+                    :class="[
+                      'w-3 h-3 rounded-full flex items-center justify-center text-[8px] text-white font-bold',
+                      selectedOrder.status === 'Shipped' ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'
+                    ]"
+                    >✓</span
+                  >
+                  <span
+                    :class="selectedOrder.status === 'Shipped' ? 'font-bold text-indigo-600 dark:text-indigo-400' : 'text-slate-500'"
+                  >
+                    3. Shipped
+                  </span>
+                </div>
+
+                <div
+                  v-if="selectedOrder.status === 'Cancelled'"
+                  class="flex items-center gap-2 ml-4"
+                >
+                  <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                  <span class="font-bold text-rose-600 dark:text-rose-400"
+                    >Cancelled</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <!-- Items Table & Add Item Inline Form -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <h3
+                  class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                >
+                  Order Items ({{ selectedOrder.items?.length || 0 }})
+                </h3>
+                <span
+                  v-if="selectedOrder.status === 'Created'"
+                  class="text-[11px] font-mono text-emerald-600 dark:text-emerald-400"
+                >
+                  Editable (Created Status)
+                </span>
+                <span v-else class="text-[11px] font-mono text-slate-400">
+                  Locked ({{ selectedOrder.status }})
+                </span>
+              </div>
+
+              <!-- Items Table -->
+              <div
+                class="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden"
+              >
+                <table class="w-full text-xs text-left">
+                  <thead
+                    class="bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-medium"
+                  >
+                    <tr>
+                      <th class="py-2.5 px-3">Product</th>
+                      <th class="py-2.5 px-3 text-right">Price</th>
+                      <th class="py-2.5 px-3 text-center">Qty</th>
+                      <th class="py-2.5 px-3 text-right">Total</th>
+                      <th
+                        v-if="selectedOrder.status === 'Created'"
+                        class="py-2.5 px-3 text-center w-12"
+                      >
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody
+                    class="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono"
+                  >
+                    <tr
+                      v-if="!selectedOrder.items || selectedOrder.items.length === 0"
+                    >
+                      <td
+                        colspan="5"
+                        class="py-6 text-center text-slate-400 font-sans"
+                      >
+                        No items added to this order yet.
+                      </td>
+                    </tr>
+                    <tr
+                      v-for="item in selectedOrder.items"
+                      :key="item.id"
+                      class="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition"
+                    >
+                      <td class="py-2.5 px-3 font-sans">
+                        <div
+                          class="font-medium text-slate-800 dark:text-slate-200"
+                        >
+                          {{ item.productName }}
+                        </div>
+                        <div class="text-[10px] text-slate-400 font-mono">
+                          {{ item.id }}
+                        </div>
+                      </td>
+                      <td
+                        class="py-2.5 px-3 text-right text-slate-600 dark:text-slate-400"
+                      >
+                        {{ formatCurrency(item.price) }}
+                      </td>
+                      <td
+                        class="py-2.5 px-3 text-center text-slate-800 dark:text-slate-200"
+                      >
+                        {{ item.quantity }}
+                      </td>
+                      <td
+                        class="py-2.5 px-3 text-right font-semibold text-slate-900 dark:text-slate-100"
+                      >
+                        {{ formatCurrency(item.price * item.quantity) }}
+                      </td>
+                      <td
+                        v-if="selectedOrder.status === 'Created'"
+                        class="py-2.5 px-3 text-center"
+                      >
+                        <button
+                          @click="removeItem(item.id)"
+                          title="Remove Item (DELETE /api/orders/:orderId/items/:itemId)"
+                          class="text-rose-500 hover:text-rose-700 cursor-pointer p-1"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Add Item Form (Only when Status == Created) -->
+              <div
+                v-if="selectedOrder.status === 'Created'"
+                class="p-3.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 space-y-3"
+              >
+                <div class="flex items-center justify-between">
+                  <span
+                    class="text-xs font-semibold text-slate-700 dark:text-slate-300"
+                  >
+                    ➕ Add Item to Order
+                  </span>
+                  <span
+                    class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400"
+                  >
+                    POST /api/orders/:orderId/items
+                  </span>
+                </div>
+
+                <form
+                  @submit.prevent="addItemToOrder"
+                  class="grid grid-cols-1 sm:grid-cols-12 gap-2"
+                >
+                  <div class="sm:col-span-5">
+                    <input
+                      v-model="newItemForm.productName"
+                      type="text"
+                      placeholder="Product name (e.g. Sprite)"
+                      required
+                      class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div class="sm:col-span-3">
+                    <input
+                      v-model.number="newItemForm.price"
+                      type="number"
+                      step="0.1"
+                      min="0.1"
+                      placeholder="Price"
+                      required
+                      class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <input
+                      v-model.number="newItemForm.quantity"
+                      type="number"
+                      min="1"
+                      placeholder="Qty"
+                      required
+                      class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <button
+                      type="submit"
+                      :disabled="addingItem"
+                      class="w-full py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition cursor-pointer disabled:opacity-50"
+                    >
+                      {{ addingItem ? '...' : '+ Add' }}
+                    </button>
+                  </div>
+                </form>
+
+                <div
+                  v-if="addItemError"
+                  class="text-xs text-rose-600 dark:text-rose-400 font-medium"
+                >
+                  {{ addItemError }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Lifecycle Actions: Pay, Ship, Cancel -->
+            <div
+              class="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4"
+            >
+              <h3
+                class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+              >
+                Lifecycle Actions & Transitions
+              </h3>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <!-- Action 1: Pay Order -->
+                <div
+                  class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex flex-col justify-between space-y-3"
+                >
+                  <div>
+                    <div class="flex items-center justify-between mb-1">
+                      <span
+                        class="text-xs font-semibold text-slate-800 dark:text-slate-200"
+                        >💳 Pay Order</span
+                      >
+                      <span
+                        class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400"
+                        >POST /pay</span
+                      >
+                    </div>
+                    <p class="text-[11px] text-slate-500">
+                      Transitions order from
+                      <code class="font-mono">Created</code> to
+                      <code class="font-mono">Paid</code>.
+                    </p>
+                  </div>
+
+                  <div
+                    v-if="selectedOrder.status === 'Created'"
+                    class="space-y-2"
+                  >
+                    <div class="grid grid-cols-2 gap-1.5">
+                      <select
+                        v-model="paymentForm.method"
+                        class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
+                      >
+                        <option value="pix">Pix</option>
+                        <option value="credit_card">Credit Card</option>
+                        <option value="boleto">Boleto</option>
+                      </select>
+                      <select
+                        v-model="paymentForm.currency"
+                        class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
+                      >
+                        <option value="BRL">BRL (R$)</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                      </select>
+                    </div>
+
+                    <button
+                      @click="payOrder"
+                      :disabled="actionLoading || !selectedOrder.items || selectedOrder.items.length === 0"
+                      class="w-full py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium text-xs transition cursor-pointer shadow-xs"
+                    >
+                      Pay {{ formatCurrency(selectedOrder.totalAmount) }}
+                    </button>
+                    <p
+                      v-if="!selectedOrder.items || selectedOrder.items.length === 0"
+                      class="text-[10px] text-amber-600 dark:text-amber-400 text-center"
+                    >
+                      Add items before paying
+                    </p>
+                  </div>
+
+                  <div v-else class="text-[11px] text-slate-400 italic">
+                    <span v-if="selectedOrder.status === 'Paid' || selectedOrder.status === 'Shipped'">✓ Order already paid.</span>
+                    <span v-else>Cannot pay a cancelled order.</span>
+                  </div>
+                </div>
+
+                <!-- Action 2: Ship Order -->
+                <div
+                  class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex flex-col justify-between space-y-3"
+                >
+                  <div>
+                    <div class="flex items-center justify-between mb-1">
+                      <span
+                        class="text-xs font-semibold text-slate-800 dark:text-slate-200"
+                        >🚚 Ship Order</span
+                      >
+                      <span
+                        class="text-[10px] font-mono text-indigo-600 dark:text-indigo-400"
+                        >POST /ship</span
+                      >
+                    </div>
+                    <p class="text-[11px] text-slate-500">
+                      Transitions order from
+                      <code class="font-mono">Paid</code> to
+                      <code class="font-mono">Shipped</code>.
+                    </p>
+                  </div>
+
+                  <div v-if="selectedOrder.status === 'Paid'">
+                    <button
+                      @click="shipOrder"
+                      :disabled="actionLoading"
+                      class="w-full py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition cursor-pointer shadow-xs"
+                    >
+                      Confirm Shipment ➔
+                    </button>
+                  </div>
+
+                  <div v-else class="text-[11px] text-slate-400 italic">
+                    <span v-if="selectedOrder.status === 'Shipped'">✓ Order already shipped.</span>
+                    <span v-else>Requires Paid status.</span>
+                  </div>
+                </div>
+
+                <!-- Action 3: Cancel Order -->
+                <div
+                  class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex flex-col justify-between space-y-3"
+                >
+                  <div>
+                    <div class="flex items-center justify-between mb-1">
+                      <span
+                        class="text-xs font-semibold text-slate-800 dark:text-slate-200"
+                        >🛑 Cancel Order</span
+                      >
+                      <span
+                        class="text-[10px] font-mono text-rose-600 dark:text-rose-400"
+                        >POST /cancel</span
+                      >
+                    </div>
+                    <p class="text-[11px] text-slate-500">
+                      Cancels order unless it was already shipped.
+                    </p>
+                  </div>
+
+                  <div
+                    v-if="['Created', 'Paid'].includes(selectedOrder.status)"
+                  >
+                    <button
+                      @click="cancelOrder"
+                      :disabled="actionLoading"
+                      class="w-full py-2 px-3 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/25 font-medium text-xs transition cursor-pointer"
+                    >
+                      Cancel Order
+                    </button>
+                  </div>
+
+                  <div v-else class="text-[11px] text-slate-400 italic">
+                    <span v-if="selectedOrder.status === 'Cancelled'">Order is already cancelled.</span>
+                    <span v-else>Cannot cancel after shipment.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Multipart Receipt Upload & Real-Time SSE Tracking Grid -->
+            <div
+              class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-200 dark:border-slate-800"
+            >
+              <!-- Upload Receipt Card (POST /api/orders/:orderId/receipt - multipart/form-data) -->
+              <div
+                class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/30 space-y-3"
+              >
+                <div class="flex items-center justify-between">
+                  <h4
+                    class="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5"
+                  >
+                    <span>📎</span> Attach Payment Receipt
+                  </h4>
+                  <span
+                    class="text-[10px] font-mono text-indigo-600 dark:text-indigo-400"
+                  >
+                    multipart/form-data
+                  </span>
+                </div>
+
+                <form @submit.prevent="uploadReceipt" class="space-y-2.5">
+                  <input
+                    ref="receiptFileInput"
+                    @change="handleFileSelected"
+                    type="file"
+                    required
+                    class="block w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-950 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 cursor-pointer"
+                  />
+
+                  <input
+                    v-model="receiptNotes"
+                    type="text"
+                    placeholder="Optional notes (e.g. Paid at counter)"
+                    class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+                  />
+
+                  <button
+                    type="submit"
+                    :disabled="uploadingReceipt || !receiptFile"
+                    class="w-full py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition cursor-pointer disabled:opacity-50"
+                  >
+                    <span v-if="uploadingReceipt">Uploading Receipt...</span>
+                    <span v-else>Upload Receipt File</span>
+                  </button>
+                </form>
+
+                <div
+                  v-if="receiptSuccess"
+                  class="text-xs text-emerald-600 dark:text-emerald-400 font-medium"
+                >
+                  ✓ {{ receiptSuccess }}
+                </div>
+              </div>
+
+              <!-- Real-Time SSE Stream Tracking (GET /api/orders/:orderId/track) -->
+              <div
+                class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/30 space-y-3 flex flex-col justify-between"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-1.5">
+                    <h4
+                      class="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5"
+                    >
+                      <span>📡</span> Live Order Tracking
+                      <span
+                        v-if="isTracking"
+                        class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-dot"
+                      ></span>
+                    </h4>
+                    <span
+                      class="text-[10px] font-mono text-sky-600 dark:text-sky-400"
+                    >
+                      SSEStream
+                    </span>
+                  </div>
+                  <p class="text-[11px] text-slate-500">
+                    Streams live status updates & summary chunks via Server-Sent
+                    Events.
+                  </p>
+                </div>
+
+                <div class="space-y-2">
+                  <!-- Stream Log Box -->
+                  <div
+                    class="h-28 bg-slate-900 text-emerald-400 font-mono text-[10px] p-2.5 rounded-lg overflow-y-auto space-y-1"
+                  >
+                    <div
+                      v-if="trackingEvents.length === 0"
+                      class="text-slate-500 italic"
+                    >
+                      Click "Stream Live Updates" to begin receiving SSE events.
+                    </div>
+                    <div
+                      v-for="evt in trackingEvents"
+                      :key="evt.id"
+                      class="leading-tight"
+                    >
+                      <span class="text-slate-400">[{{ evt.time }}]</span>
+                      <span class="text-sky-300 font-semibold">
+                        event: {{ evt.event }}</span
+                      >
+                      <span class="text-emerald-300">
+                        data: {{ JSON.stringify(evt.data) }}</span
+                      >
+                    </div>
+                  </div>
+
+                  <button
+                    @click="startSSETracking"
+                    :disabled="isTracking"
+                    class="w-full py-1.5 px-3 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <span v-if="isTracking" class="animate-spin text-xs"
+                      >⌛</span
+                    >
+                    <span>
+                      <template v-if="isTracking">Listening to SSE Stream...</template>
+                      <template v-else>Stream Live Updates (SSE)</template>
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- No Order Selected Placeholder -->
+          <section
+            v-else
+            class="bg-white dark:bg-slate-900/70 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl p-12 text-center"
+          >
+            <span class="text-3xl">📦</span>
+            <h3
+              class="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-2"
+            >
+              No Order Selected
+            </h3>
+            <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+              Select an order from the list above or create a new order to
+              manage line items, pay, ship, or attach receipts.
+            </p>
+          </section>
+        </div>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- AUTHENTICATION MODAL (LOGIN / REGISTER) -->
+      <!-- ============================================== -->
+      <div
+        v-if="showAuthModal"
+        class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4"
+      >
+        <div
+          class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
+        >
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">
+              <span v-if="authTab === 'login'">Sign In to Order Flow</span>
+              <span v-else>Create New Account</span>
+            </h3>
+            <button
+              @click="showAuthModal = false"
+              class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <!-- Auth Tab Toggle -->
+          <div
+            class="grid grid-cols-2 p-1 rounded-xl bg-slate-100 dark:bg-slate-950 text-xs font-semibold"
+          >
+            <button
+              @click="authTab = 'login'"
+              :class="[
+                'py-1.5 rounded-lg transition cursor-pointer',
+                authTab === 'login' ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500'
+              ]"
+            >
+              Login
+            </button>
+            <button
+              @click="authTab = 'register'"
+              :class="[
+                'py-1.5 rounded-lg transition cursor-pointer',
+                authTab === 'register' ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500'
+              ]"
+            >
+              Register
+            </button>
+          </div>
+
+          <!-- Login Form -->
+          <form
+            v-if="authTab === 'login'"
+            @submit.prevent="handleLogin"
+            class="space-y-3"
+          >
+            <div>
+              <label
+                class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
+                >Username</label
+              >
+              <input
+                v-model="loginForm.username"
+                type="text"
+                required
+                class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label
+                class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
+                >Password</label
+              >
+              <input
+                v-model="loginForm.password"
+                type="password"
+                required
+                class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div
+              v-if="authError"
+              class="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300"
+            >
+              {{ authError }}
+            </div>
+
+            <button
+              type="submit"
+              :disabled="isAuthenticating"
+              class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition cursor-pointer shadow-xs disabled:opacity-50"
+            >
+              {{ isAuthenticating ? 'Signing in...' : 'Sign In' }}
+            </button>
+          </form>
+
+          <!-- Register Form -->
+          <form v-else @submit.prevent="handleRegister" class="space-y-3">
+            <div>
+              <label
+                class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
+                >Desired Username</label
+              >
+              <input
+                v-model="registerForm.username"
+                type="text"
+                required
+                placeholder="novousuario"
+                class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label
+                class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
+                >Password</label
+              >
+              <input
+                v-model="registerForm.password"
+                type="password"
+                required
+                placeholder="senha123"
+                class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+              />
+              <p class="text-[11px] text-slate-500 mt-1">
+                New accounts are automatically registered as Customers.
+              </p>
+            </div>
+
+            <div
+              v-if="authError"
+              class="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300"
+            >
+              {{ authError }}
+            </div>
+
+            <button
+              type="submit"
+              :disabled="isAuthenticating"
+              class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition cursor-pointer shadow-xs disabled:opacity-50"
+            >
+              {{ isAuthenticating ? 'Registering...' : 'Register Account' }}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

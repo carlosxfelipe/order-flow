@@ -19,6 +19,20 @@ Then visit:
 
 > 🔒 **Documentation Authentication**: The `/docs`, `/openapi.json`, `/sdk.ts`, and `/types.d.ts` routes are protected with HTTP Basic Auth via `app.UseDocs(gota.BasicAuth("admin", "admin123"))`. Use user: `admin` and password: `admin123`.
 
+## 🖥️ Zero-Build Frontend Application
+
+A full-featured, zero-build client application using **Vue 3** and **Tailwind CSS** (via CDN) is available in [`frontend/`](frontend):
+
+- **Quick Launch**: Open [`frontend/index.html`](frontend/index.html) directly in any browser (or serve with `python3 -m http.server` / `npx serve`).
+- **Features Included**:
+  - 1-click authentication switcher for seed users (`admin`, `carlos`, `maria`, `luis`).
+  - Scoped order management (Customers see own orders; Admins view all).
+  - Full order lifecycle: create order, add/remove line items, pay (Pix, Card, Boleto), ship, and cancel.
+  - Multipart receipt upload (`POST /api/orders/:orderId/receipt`).
+  - Live Server-Sent Events (SSE) stream tracking (`GET /api/orders/:orderId/track`).
+  - Interactive JSON response inspector & 422 validation error feedback.
+
+
 ## 📦 Offline TypeScript SDK Codegen
 
 To generate the full TypeScript Client SDK (`./dist/sdk.ts`) and TypeScript definitions (`./dist/types.d.ts`) offline (e.g., for CI/CD pipelines or frontend builds without running the HTTP server):
