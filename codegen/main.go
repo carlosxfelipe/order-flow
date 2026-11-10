@@ -21,6 +21,8 @@ import (
 // Usage:
 //
 //	go run ./codegen/main.go
+//	go run ./codegen/main.go --ts-sdk=./dist/sdk.ts --ts-types=./dist/types.d.ts
+//	go run ./codegen/main.go --stdout
 func main() {
 	// 1. Initialize the Order Flow app with HTTP TypeScript routes disabled
 	app := gota.New(gota.Config{
@@ -46,12 +48,17 @@ func main() {
 	auth.RegisterProtectedRoutes(protectedGroup, store)
 	orders.RegisterRoutes(protectedGroup, store)
 
-	// 3. Resolve project root and export TypeScript SDK and Definitions directly to <rootDir>/dist
+	// 3. Process CLI flags if passed (e.g. for CI/CD or build scripts)
+	if handled, err := app.RunCodegen(os.Args[1:]); handled {
+		if err != nil {
+			log.Fatalf("Codegen failed: %v", err)
+		}
+		return
+	}
+
+	// 4. Default behavior: export directly to <rootDir>/dist
 	rootDir := findProjectRoot()
 	distDir := filepath.Join(rootDir, "dist")
-	if err := os.MkdirAll(distDir, 0755); err != nil {
-		log.Fatalf("Failed to create dist directory: %v", err)
-	}
 
 	sdkTarget := filepath.Join(distDir, "sdk.ts")
 	if err := app.ExportTypeScriptSDK(sdkTarget); err != nil {

@@ -8,7 +8,7 @@ import (
 // RegisterRequest defines input for account registration.
 type RegisterRequest struct {
 	Username string `json:"username" doc:"Username" example:"novousuario" validate:"required,min=3" msg:"required:Username is required|min:Username must be at least 3 characters long"`
-	Password string `json:"password" doc:"User password" example:"senha123" validate:"required,min=6" msg:"required:Password is required|min:Password must be at least 6 characters long"`
+	Password string `json:"password" doc:"User password" example:"senha123" validate:"required,min=6,nowarn" msg:"required:Password is required|min:Password must be at least 6 characters long"`
 }
 
 // RegisterResponse returns the created user info along with an initial JWT token.
