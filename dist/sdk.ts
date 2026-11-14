@@ -624,7 +624,7 @@ export interface GotaClient {
   readonly baseUrl: string;
   fetch<K extends EndpointKey>(
     endpoint: K,
-    ...args: {} extends GotaEndpoints[K]["request"]
+    ...args: Record<never, never> extends GotaEndpoints[K]["request"]
       ? [options?: RequestOptions<K>]
       : [options: RequestOptions<K>]
   ): Promise<ResponseData<K>>;
@@ -635,7 +635,7 @@ const BODY_ENCODINGS: Record<string, BodyEncoding | undefined> = {
 };
 
 const DEFAULT_RETRY_STATUSES = [408, 429, 500, 502, 503, 504];
-const DEFAULT_RETRY_METHODS = ["GET", "HEAD", "OPTIONS", "PUT", "DELETE"];
+export const DEFAULT_RETRY_METHODS: readonly string[] = ["GET", "HEAD", "OPTIONS", "PUT", "DELETE"];
 
 export class GotaHttpError<T = unknown> extends Error {
   readonly status: number;
@@ -656,12 +656,44 @@ export class GotaHttpError<T = unknown> extends Error {
   }
 }
 
+export function isGotaHttpError<T = unknown>(error: unknown): error is GotaHttpError<T> {
+  return error instanceof GotaHttpError;
+}
+
 type FormEntry = [string, string | Blob];
 
 interface RawRequestOptions extends BaseRequestOptions {
   params?: Record<string, unknown>;
   query?: Record<string, unknown>;
   body?: unknown;
+}
+
+function formatValidationErrors(items: unknown[]): string {
+  const parts = items.map((item) => {
+    if (typeof item === "string") return item;
+    if (item && typeof item === "object") {
+      const e = item as Record<string, unknown>;
+      const loc = Array.isArray(e["loc"])
+        ? e["loc"].map(String).join(".")
+        : typeof e["field"] === "string"
+          ? e["field"]
+          : typeof e["path"] === "string"
+            ? e["path"]
+            : "";
+      const msg =
+        typeof e["msg"] === "string"
+          ? e["msg"]
+          : typeof e["message"] === "string"
+            ? e["message"]
+            : typeof e["error"] === "string"
+              ? e["error"]
+              : "";
+      if (loc && msg) return loc + ": " + msg;
+      if (msg) return msg;
+    }
+    return JSON.stringify(item);
+  });
+  return "Validation error: " + parts.join("; ");
 }
 
 function errorMessage(data: unknown, fallback: string): string {
@@ -671,19 +703,25 @@ function errorMessage(data: unknown, fallback: string): string {
     if (typeof d["message"] === "string" && d["message"]) return d["message"];
     if (typeof d["error"] === "string" && d["error"]) return d["error"];
     if (typeof d["detail"] === "string" && d["detail"]) return d["detail"];
-    if (Array.isArray(d["detail"]) && d["detail"].length > 0) return "Validation error: " + JSON.stringify(d["detail"]);
-    if (Array.isArray(d["errors"]) && d["errors"].length > 0) return "Validation error: " + JSON.stringify(d["errors"]);
+    if (Array.isArray(d["detail"]) && d["detail"].length > 0) return formatValidationErrors(d["detail"]);
+    if (Array.isArray(d["errors"]) && d["errors"].length > 0) return formatValidationErrors(d["errors"]);
     if (typeof d["title"] === "string" && d["title"]) return d["title"];
   }
   return fallback;
 }
 
 function isBlob(value: unknown): value is Blob {
-  return typeof Blob !== "undefined" && value instanceof Blob;
+  return (
+    (typeof Blob !== "undefined" && value instanceof Blob) ||
+    (typeof File !== "undefined" && value instanceof File)
+  );
 }
 
 function isReadableStream(value: unknown): value is ReadableStream {
-  return typeof ReadableStream !== "undefined" && value instanceof ReadableStream;
+  return (
+    (typeof ReadableStream !== "undefined" && value instanceof ReadableStream) ||
+    (value !== null && typeof value === "object" && typeof (value as { getReader?: unknown }).getReader === "function")
+  );
 }
 
 function isBodyInit(body: unknown): body is BodyInit {
@@ -730,8 +768,14 @@ function toEntries(source: object): FormEntry[] {
   return out;
 }
 
-function hasBlobValue(source: object): boolean {
-  return Object.values(source).some((value) => isBlob(value) || (Array.isArray(value) && value.some(isBlob)));
+function hasBlobValue(value: unknown, seen = new Set<unknown>()): boolean {
+  if (value === null || typeof value !== "object") return false;
+  if (isBlob(value)) return true;
+  if (seen.has(value)) return false;
+  seen.add(value);
+  if (Array.isArray(value)) return value.some((item) => hasBlobValue(item, seen));
+  if (value instanceof Date) return false;
+  return Object.values(value).some((item) => hasBlobValue(item, seen));
 }
 
 function resolvePath(endpoint: string, template: string, params: Record<string, unknown>): string {
@@ -755,6 +799,10 @@ function resolvePath(endpoint: string, template: string, params: Record<string, 
 }
 
 function encodeBody(endpoint: string, body: unknown, headers: Headers): BodyInit {
+  if (typeof FormData !== "undefined" && body instanceof FormData) {
+    headers.delete("Content-Type"); // let fetch set the multipart boundary
+    return body;
+  }
   if (isBodyInit(body)) return body;
   const encoding = BODY_ENCODINGS[endpoint] ?? "json";
   const contentType = headers.get("Content-Type") ?? "";
@@ -781,13 +829,17 @@ function encodeBody(endpoint: string, body: unknown, headers: Headers): BodyInit
 }
 
 function createTimeoutSignal(timeoutMs: number | undefined): AbortSignal | undefined {
-  if (timeoutMs === undefined || timeoutMs <= 0 || typeof AbortController === "undefined") return undefined;
-  if (typeof AbortSignal.timeout === "function") return AbortSignal.timeout(timeoutMs);
+  if (timeoutMs === undefined || timeoutMs <= 0) return undefined;
+  if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+    return AbortSignal.timeout(timeoutMs);
+  }
+  if (typeof AbortController === "undefined") return undefined;
   const controller = new AbortController();
-  const timer: unknown = setTimeout(
-    () => controller.abort(new DOMException("The operation timed out.", "TimeoutError")),
-    timeoutMs
-  );
+  const timeoutReason =
+    typeof DOMException !== "undefined"
+      ? new DOMException("The operation timed out.", "TimeoutError")
+      : new Error("The operation timed out.");
+  const timer: unknown = setTimeout(() => controller.abort(timeoutReason), timeoutMs);
   if (
     timer &&
     typeof timer === "object" &&
@@ -911,16 +963,19 @@ export function createGotaClient(baseUrl = "", clientOptions: GotaClientOptions 
     if (credentials) init.credentials = credentials;
     const cache = options.cache ?? clientOptions.cache;
     if (cache) init.cache = cache;
-    const next = options.next ?? clientOptions.next;
-    if (next) init.next = next;
+    const nextConfig =
+      clientOptions.next || options.next
+        ? { ...clientOptions.next, ...options.next }
+        : undefined;
+    if (nextConfig) init.next = nextConfig;
     const duplex = options.duplex ?? (isReadableStream(init.body) ? "half" : undefined);
     if (duplex) init.duplex = duplex;
 
     const signal = combineSignals(options.signal, createTimeoutSignal(options.timeoutMs ?? clientOptions.timeoutMs));
     if (signal) init.signal = signal;
 
-    const onRequest = options.onRequest ?? clientOptions.onRequest;
-    if (onRequest) await onRequest({ endpoint, url, init });
+    if (clientOptions.onRequest) await clientOptions.onRequest({ endpoint, url, init });
+    if (options.onRequest) await options.onRequest({ endpoint, url, init });
 
     const retryOpt = options.retry ?? clientOptions.retry;
     let maxAttempts = 1;
@@ -950,8 +1005,8 @@ export function createGotaClient(baseUrl = "", clientOptions: GotaClientOptions 
           continue;
         }
         const errObj = fetchErr instanceof Error ? fetchErr : new Error(String(fetchErr));
-        const onError = options.onError ?? clientOptions.onError;
-        if (onError) await onError(errObj, { endpoint, url });
+        if (clientOptions.onError) await clientOptions.onError(errObj, { endpoint, url });
+        if (options.onError) await options.onError(errObj, { endpoint, url });
         throw fetchErr;
       }
       if (!res.ok && attempt < maxAttempts - 1 && retryStatuses.includes(res.status) && !init.signal?.aborted) {
@@ -963,14 +1018,14 @@ export function createGotaClient(baseUrl = "", clientOptions: GotaClientOptions 
     }
 
     const context: GotaResponseContext = { endpoint, url };
-    const onResponse = options.onResponse ?? clientOptions.onResponse;
-    if (onResponse) await onResponse(res, context);
+    if (clientOptions.onResponse) await clientOptions.onResponse(res, context);
+    if (options.onResponse) await options.onResponse(res, context);
 
     if (!res.ok) {
       const data = await readErrorBody(res);
       const httpErr = new GotaHttpError(res.status, res.statusText, data, res.headers, res);
-      const onError = options.onError ?? clientOptions.onError;
-      if (onError) await onError(httpErr, context);
+      if (clientOptions.onError) await clientOptions.onError(httpErr, context);
+      if (options.onError) await options.onError(httpErr, context);
       throw httpErr;
     }
     return readBody(res);
@@ -980,7 +1035,7 @@ export function createGotaClient(baseUrl = "", clientOptions: GotaClientOptions 
     baseUrl: root,
     fetch(endpoint, ...args) {
       const [options] = args as unknown as [RawRequestOptions?];
-      return request(String(endpoint), options ?? {}) as Promise<never>;
+      return request(String(endpoint), options ?? {}) as Promise<ResponseData<typeof endpoint>>;
     },
   };
   return client;
